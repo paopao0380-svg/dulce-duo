@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dulce Dúo | Panel de Administración</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { display: ['Fredoka', 'cursive'], sans: ['Poppins', 'sans-serif'] },
+          colors: {
+            dulce: { fucsia: '#E91E63', fucsiaDark: '#C2185B', rosaSuave: '#FCE4EC', rosaFondo: '#FFF0F5', caramelo: '#D4883C', cafe: '#6D3B1E' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background-color: #FFF0F5; }
+    .tab-active { background: linear-gradient(135deg, #E91E63, #C2185B); color: white; }
+  </style>
+</head>
+<body class="font-sans text-gray-800 min-h-screen">
+  <!-- Header Admin -->
+  <header class="bg-white border-b-2 border-pink-200 sticky top-0 z-40 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-dulce-fucsia to-dulce-caramelo flex items-center justify-center text-2xl shadow">🍦</div>
+        <div>
+          <h1 class="font-display text-xl font-bold text-dulce-fucsia">Dulce Dúo</h1>
+          <p class="text-xs text-dulce-cafe">Panel de Administración</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 flex-wrap">
+        <span id="adminName" class="text-sm font-medium text-gray-600 hidden sm:inline"></span>
+        <button onclick="showSection('dashboard')" class="px-3 py-2 rounded-xl text-sm font-semibold bg-pink-50 text-dulce-cafe hover:bg-pink-100 transition">
+          <i class="fa-solid fa-chart-pie mr-1"></i> Dashboard
+        </button>
+        <button onclick="showSection('inventory')" class="px-3 py-2 rounded-xl text-sm font-semibold bg-pink-50 text-dulce-cafe hover:bg-pink-100 transition">
+          <i class="fa-solid fa-boxes-stacked mr-1"></i> Inventario
+        </button>
+        <button onclick="showSection('reports')" class="px-3 py-2 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition">
+          <i class="fa-solid fa-file-lines mr-1"></i> Reportes
+        </button>
+        <button onclick="showSection('expenses')" class="px-3 py-2 rounded-xl text-sm font-semibold bg-green-600 text-white hover:bg-green-700 transition">
+          <i class="fa-solid fa-plus mr-1"></i> Gasto
+        </button>
+        <button onclick="logoutAndRedirect()" class="px-3 py-2 rounded-xl text-sm font-semibold bg-red-500 text-white hover:bg-red-600 transition">
+          <i class="fa-solid fa-right-from-bracket mr-1"></i> Salir
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 py-6">
+    <!-- ==================== DASHBOARD ==================== -->
+    <section id="section-dashboard" class="space-y-6">
+      <div class="flex items-center justify-between">
+        <h2 class="font-display text-2xl font-bold text-dulce-cafe">Panel Contable · Hoy</h2>
+        <span class="text-sm text-gray-500" id="todayLabel"></span>
+      </div>
+
+      <!-- Cards resumen -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white rounded-2xl p-5 border-2 border-green-100 shadow-sm">
+          <p class="text-xs font-semibold text-green-600 uppercase tracking-wide">Ingresos (Ventas)</p>
+          <p class="font-display text-3xl font-bold text-green-600 mt-1" id="statIngresos">$0.00</p>
+          <p class="text-xs text-gray-500 mt-1" id="statPedidos">0 pedidos</p>
+        </div>
+        <div class="bg-white rounded-2xl p-5 border-2 border-red-100 shadow-sm">
+          <p class="text-xs font-semibold text-red-600 uppercase tracking-wide">Egresos (Gastos)</p>
+          <p class="font-display text-3xl font-bold text-red-600 mt-1" id="statEgresos">$0.00</p>
+          <p class="text-xs text-gray-500 mt-1" id="statGastosCount">0 registros</p>
+        </div>
+        <div class="bg-white rounded-2xl p-5 border-2 border-blue-100 shadow-sm">
+          <p class="text-xs font-semibold text-blue-600 uppercase tracking-wide">Utilidad Estimada</p>
+          <p class="font-display text-3xl font-bold text-blue-600 mt-1" id="statUtilidad">$0.00</p>
+          <p class="text-xs text-gray-500 mt-1">Hoy</p>
+        </div>
+        <div class="bg-white rounded-2xl p-5 border-2 border-amber-100 shadow-sm">
+          <p class="text-xs font-semibold text-amber-600 uppercase tracking-wide">Stock Bajo</p>
+          <p class="font-display text-3xl font-bold text-amber-600 mt-1" id="statLowStock">0</p>
+          <p class="text-xs text-gray-500 mt-1">productos</p>
+        </div>
+      </div>
+
+      <!-- Gráfico + Top productos -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white rounded-2xl p-5 border border-pink-100 shadow-sm">
+          <h3 class="font-display font-bold text-lg text-dulce-cafe mb-4">Ingresos vs Egresos (últimos 7 días)</h3>
+          <canvas id="chartIngresosEgresos" height="220"></canvas>
+        </div>
+        <div class="bg-white rounded-2xl p-5 border border-pink-100 shadow-sm">
+          <h3 class="font-display font-bold text-lg text-dulce-cafe mb-4">Productos más vendidos</h3>
+          <div id="topProductsList" class="space-y-3"></div>
+        </div>
+      </div>
+
+      <!-- Stock bajo + Últimas ventas / gastos -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="bg-white rounded-2xl p-5 border border-amber-100 shadow-sm">
+          <h3 class="font-display font-bold text-lg text-amber-700 mb-3"><i class="fa-solid fa-triangle-exclamation mr-2"></i>Stock Bajo</h3>
+          <div id="lowStockList" class="space-y-2 max-h-64 overflow-y-auto"></div>
+        </div>
+        <div class="bg-white rounded-2xl p-5 border border-pink-100 shadow-sm">
+          <h3 class="font-display font-bold text-lg text-dulce-cafe mb-3">Últimas Ventas</h3>
+          <div id="latestSalesList" class="space-y-2 max-h-64 overflow-y-auto text-sm"></div>
+        </div>
+        <div class="bg-white rounded-2xl p-5 border border-pink-100 shadow-sm">
+          <h3 class="font-display font-bold text-lg text-dulce-cafe mb-3">Últimos Gastos</h3>
+          <div id="latestExpensesList" class="space-y-2 max-h-64 overflow-y-auto text-sm"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== INVENTARIO ==================== -->
+    <section id="section-inventory" class="hidden space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 class="font-display text-2xl font-bold text-dulce-cafe">Gestión de Productos e Inventario</h2>
+          <p class="text-sm text-gray-500">Panel de Administración</p>
+        </div>
+        <button onclick="openProductModal()" class="bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-2.5 rounded-xl shadow transition">
+          <i class="fa-solid fa-plus mr-1"></i> Nuevo Producto
+        </button>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-pink-100 overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-dulce-fucsia text-white">
+              <tr>
+                <th class="px-4 py-3 text-left font-semibold">Producto</th>
+                <th class="px-4 py-3 text-left">Categoría</th>
+                <th class="px-4 py-3 text-right">Precio</th>
+                <th class="px-4 py-3 text-center">Stock</th>
+                <th class="px-4 py-3 text-center">Mínimo</th>
+                <th class="px-4 py-3 text-center">Estado</th>
+                <th class="px-4 py-3 text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="productsTableBody" class="divide-y divide-pink-50"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== REPORTES ==================== -->
+    <section id="section-reports" class="hidden space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="font-display text-2xl font-bold text-dulce-cafe">Reportes Ingresos / Egresos</h2>
+          <p class="text-sm text-gray-500">Proyección de ventas y gastos</p>
+        </div>
+        <button onclick="showSection('dashboard')" class="text-sm font-semibold text-dulce-fucsia hover:underline">← Panel</button>
+      </div>
+
+      <div class="bg-white rounded-2xl p-5 border border-pink-100 shadow-sm space-y-4">
+        <div class="flex flex-wrap gap-2 items-center">
+          <button onclick="setReportRange('week')" id="btnWeek" class="px-4 py-2 rounded-full text-sm font-semibold bg-pink-100 text-dulce-fucsia">Esta semana</button>
+          <button onclick="setReportRange('month')" id="btnMonth" class="px-4 py-2 rounded-full text-sm font-semibold bg-gray-100 text-gray-600">Este mes</button>
+          <div class="flex items-center gap-2 ml-2">
+            <input type="date" id="reportFrom" class="border rounded-xl px-3 py-2 text-sm">
+            <span class="text-gray-400">→</span>
+            <input type="date" id="reportTo" class="border rounded-xl px-3 py-2 text-sm">
+          </div>
+          <button onclick="generateReport()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-semibold">
+            Generar reporte
+          </button>
+          <button onclick="exportExcel()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-sm font-semibold">
+            <i class="fa-solid fa-file-excel mr-1"></i> Excel / CSV
+          </button>
+          <button onclick="printReport()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-xl text-sm font-semibold">
+            <i class="fa-solid fa-print mr-1"></i> Imprimir
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4" id="reportSummary">
+          <div class="bg-green-50 rounded-xl p-4 text-center">
+            <p class="text-xs text-green-700 font-semibold">Ingresos (Ventas)</p>
+            <p class="font-display text-2xl font-bold text-green-600" id="repIngresos">$0.00</p>
+            <p class="text-xs text-gray-500" id="repPedidos">0 pedidos</p>
+          </div>
+          <div class="bg-red-50 rounded-xl p-4 text-center">
+            <p class="text-xs text-red-700 font-semibold">Egresos (Gastos)</p>
+            <p class="font-display text-2xl font-bold text-red-600" id="repEgresos">$0.00</p>
+            <p class="text-xs text-gray-500" id="repGastos">0 registros</p>
+          </div>
+          <div class="bg-blue-50 rounded-xl p-4 text-center">
+            <p class="text-xs text-blue-700 font-semibold">Utilidad / Proyección</p>
+            <p class="font-display text-2xl font-bold text-blue-600" id="repUtilidad">$0.00</p>
+            <p class="text-xs text-gray-500" id="repPeriod"></p>
+          </div>
+        </div>
+
+        <div id="reportDetail" class="mt-4 overflow-x-auto"></div>
+      </div>
+    </section>
+
+    <!-- ==================== GASTOS (FORM) ==================== -->
+    <section id="section-expenses" class="hidden">
+      <div class="max-w-2xl mx-auto">
+        <div class="bg-white rounded-3xl shadow-lg border-2 border-pink-100 p-6 sm:p-8">
+          <h2 class="font-display text-2xl font-bold text-dulce-fucsia text-center mb-1">Registrar Gasto</h2>
+          <p class="text-center text-sm text-gray-500 mb-6">Detalle de compra · IVA 15% o 0% según el producto</p>
+
+          <form id="expenseForm" class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Proveedor</label>
+                <input type="text" id="expProvider" required placeholder="Ej: Distribuidora El Guabo"
+                  class="w-full px-4 py-2.5 rounded-xl border-2 border-pink-100 focus:border-dulce-fucsia focus:outline-none">
+              </div>
+              <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">N° de factura</label>
+                <input type="text" id="expInvoice" placeholder="Ej: 001-001-0001234"
+                  class="w-full px-4 py-2.5 rounded-xl border-2 border-pink-100 focus:border-dulce-fucsia focus:outline-none">
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Fecha</label>
+              <input type="date" id="expDate" required class="w-full px-4 py-2.5 rounded-xl border-2 border-pink-100 focus:border-dulce-fucsia focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Descripción del producto</label>
+              <input type="text" id="expDesc" required placeholder="Ej: Pollo fresco / Aceite / Vasos descartables"
+                class="w-full px-4 py-2.5 rounded-xl border-2 border-pink-100 focus:border-dulce-fucsia focus:outline-none">
+            </div>
+            <div class="grid grid-cols-3 gap-3">
+              <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Cantidad</label>
+                <input type="number" id="expQty" min="0.01" step="0.01" value="1" required
+                  class="w-full px-3 py-2.5 rounded-xl border-2 border-pink-100 focus:border-dulce-fucsia focus:outline-none">
+              </div>
+              <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Unidad</label>
+                <select id="expUnit" class="w-full px-3 py-2.5 rounded-xl border-2 border-pink-100 focus:border-dulce-fucsia focus:outline-none">
+                  <option>Unidad</option>
+                  <option>Kg</option>
+                  <option>Litro</option>
+                  <option>Caja</option>
+                  <option>Paquete</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Precio unitario ($)</label>
+                <input type="number" id="expPrice" min="0" step="0.01" value="0" required
+                  class="w-full px-3 py-2.5 rounded-xl border-2 border-pink-100 focus:border-dulce-fucsia focus:outline-none">
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">¿El producto grava IVA?</label>
+              <select id="expIva" class="w-full px-4 py-2.5 rounded-xl border-2 border-pink-100 focus:border-dulce-fucsia focus:outline-none">
+                <option value="0">No grava IVA (0%) — alimento en estado natural</option>
+                <option value="15">Sí grava IVA (15%) — productos procesados / empaques</option>
+              </select>
+              <p class="text-xs text-gray-500 mt-1">0%: fruta, verdura, carne cruda, granos en estado natural. 15%: productos procesados, empaques, servicios, comida preparada.</p>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Categoría</label>
+              <select id="expCategory" class="w-full px-4 py-2.5 rounded-xl border-2 border-pink-100 focus:border-dulce-fucsia focus:outline-none">
+                <option>Insumos / Ingredientes</option>
+                <option>Empaques / Desechables</option>
+                <option>Limpieza</option>
+                <option>Servicios (luz, agua, gas)</option>
+                <option>Mantenimiento</option>
+                <option>Otros</option>
+              </select>
+            </div>
+
+            <div class="bg-dulce-rosaFondo rounded-2xl p-4 space-y-1 text-sm">
+              <div class="flex justify-between"><span>Subtotal</span><span id="expSubtotal">$0.00</span></div>
+              <div class="flex justify-between"><span>IVA</span><span id="expIvaAmount">$0.00</span></div>
+              <div class="flex justify-between font-bold text-lg border-t border-pink-200 pt-2 mt-2">
+                <span>Total</span><span id="expTotal">$0.00</span>
+              </div>
+            </div>
+
+            <div class="flex gap-3 pt-2">
+              <button type="submit" class="flex-1 py-3 rounded-2xl font-display font-bold text-white bg-green-600 hover:bg-green-700 shadow transition">
+                Guardar Gasto
+              </button>
+              <button type="button" onclick="showSection('dashboard')" class="px-6 py-3 rounded-2xl font-semibold bg-gray-200 hover:bg-gray-300 transition">
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal Producto -->
+  <div id="productModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <h3 class="font-display text-xl font-bold text-dulce-fucsia mb-4" id="modalTitle">Nuevo Producto</h3>
+      <form id="productForm" class="space-y-3">
+        <input type="hidden" id="prodId">
+        <div>
+          <label class="text-sm font-semibold">Nombre</label>
+          <input type="text" id="prodName" required class="w-full px-3 py-2 rounded-xl border-2 border-pink-100 focus:border-dulce-fucsia focus:outline-none">
+        </div>
+        <div>
+          <label class="text-sm font-semibold">Descripción</label>
+          <input type="text" id="prodDesc" class="w-full px-3 py-2 rounded-xl border-2 border-pink-100 focus:border-dulce-fucsia focus:outline-none">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-sm font-semibold">Categoría</label>
+            <select id="prodCategory" class="w-full px-3 py-2 rounded-xl border-2 border-pink-100"></select>
+          </div>
+          <div>
+            <label class="text-sm font-semibold">Emoji</label>
+            <input type="text" id="prodEmoji" value="🍦" class="w-full px-3 py-2 rounded-xl border-2 border-pink-100">
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="text-sm font-semibold">Precio ($)</label>
+            <input type="number" id="prodPrice" step="0.01" min="0" required class="w-full px-3 py-2 rounded-xl border-2 border-pink-100">
+          </div>
+          <div>
+            <label class="text-sm font-semibold">Stock</label>
+            <input type="number" id="prodStock" min="0" value="0" class="w-full px-3 py-2 rounded-xl border-2 border-pink-100">
+          </div>
+          <div>
+            <label class="text-sm font-semibold">Mínimo</label>
+            <input type="number" id="prodMin" min="0" value="5" class="w-full px-3 py-2 rounded-xl border-2 border-pink-100">
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <input type="checkbox" id="prodActive" checked>
+          <label for="prodActive" class="text-sm">Activo (visible en POS)</label>
+        </div>
+        <div class="flex items-center gap-2">
+          <input type="checkbox" id="prodPopular">
+          <label for="prodPopular" class="text-sm">Marcar como popular / favorito</label>
+        </div>
+        <div class="flex gap-3 pt-3">
+          <button type="submit" class="flex-1 py-2.5 rounded-xl bg-dulce-fucsia text-white font-bold">Guardar</button>
+          <button type="button" onclick="closeProductModal()" class="px-5 py-2.5 rounded-xl bg-gray-200">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/db.js"></script>
+  <script>
+    // Auth
+    const user = requireAuth('admin');
+    if (user) {
+      document.getElementById('adminName').textContent = user.name;
+      document.getElementById('adminName').classList.remove('hidden');
+    }
+
+    document.getElementById('todayLabel').textContent = new Date().toLocaleDateString('es-EC', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    document.getElementById('expDate').value = getToday();
+
+    // Navegación
+    function showSection(name) {
+      ['dashboard', 'inventory', 'reports', 'expenses'].forEach(s => {
+        document.getElementById('section-' + s).classList.toggle('hidden', s !== name);
+      });
+      if (name === 'dashboard') loadDashboard();
+      if (name === 'inventory') loadInventory();
+      if (name === 'reports') {
+        setReportRange('week');
+      }
+    }
+
+    function logoutAndRedirect() {
+      logout();
+      window.location.href = 'index.html';
+    }
+
+    // ==================== DASHBOARD ====================
+    let chartInstance = null;
+    function loadDashboard() {
+      const stats = getDashboardStats();
+      document.getElementById('statIngresos').textContent = formatMoney(stats.ventasHoy);
+      document.getElementById('statPedidos').textContent = stats.pedidosHoy + ' pedidos';
+      document.getElementById('statEgresos').textContent = formatMoney(stats.gastosHoy);
+      document.getElementById('statGastosCount').textContent = getTodayExpenses().length + ' registros';
+      document.getElementById('statUtilidad').textContent = formatMoney(stats.utilidadHoy);
+      document.getElementById('statLowStock').textContent = stats.lowStock.length;
+
+      // Top products
+      const topEl = document.getElementById('topProductsList');
+      if (stats.topProducts.length === 0) {
+        topEl.innerHTML = '<p class="text-gray-400 text-sm">Aún no hay ventas registradas.</p>';
+      } else {
+        topEl.innerHTML = stats.topProducts.map((p, i) => `
+          <div class="flex items-center gap-3">
+            <span class="text-2xl">${p.emoji}</span>
+            <div class="flex-1">
+              <p class="font-semibold text-sm">${p.name}</p>
+              <p class="text-xs text-gray-500">${p.qty} vendidos</p>
+            </div>
+            <span class="font-bold text-dulce-fucsia">#${i + 1}</span>
+          </div>
+        `).join('');
+      }
+
+      // Low stock
+      const lowEl = document.getElementById('lowStockList');
+      if (stats.lowStock.length === 0) {
+        lowEl.innerHTML = '<p class="text-green-600 text-sm">✓ Todo el stock está bien</p>';
+      } else {
+        lowEl.innerHTML = stats.lowStock.map(p => `
+          <div class="flex justify-between items-center text-sm py-1 border-b border-amber-50">
+            <span>${p.emoji} ${p.name}</span>
+            <span class="font-bold text-red-600">${p.stock} / ${p.min_stock}</span>
+          </div>
+        `).join('');
+      }
+
+      // Latest sales
+      document.getElementById('latestSalesList').innerHTML = stats.latestSales.length
+        ? stats.latestSales.map(s => `
+            <div class="flex justify-between py-1 border-b border-pink-50">
+              <span>${s.ticket} · ${s.order_type}</span>
+              <span class="font-semibold text-green-600">${formatMoney(s.total)}</span>
+            </div>
+          `).join('')
+        : '<p class="text-gray-400">Sin ventas aún</p>';
+
+      // Latest expenses
+      document.getElementById('latestExpensesList').innerHTML = stats.latestExpenses.length
+        ? stats.latestExpenses.map(e => `
+            <div class="flex justify-between py-1 border-b border-pink-50">
+              <span class="truncate max-w-[140px]">${e.description || e.desc || 'Gasto'}</span>
+              <span class="font-semibold text-red-600">${formatMoney(e.total)}</span>
+            </div>
+          `).join('')
+        : '<p class="text-gray-400">Sin gastos aún</p>';
+
+      // Chart last 7 days
+      const days = [];
+      const ingresosData = [];
+      const egresosData = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const key = d.toISOString().split('T')[0];
+        days.push(d.toLocaleDateString('es-EC', { weekday: 'short', day: 'numeric' }));
+        const daySales = getSalesByDateRange(key, key).reduce((s, x) => s + x.total, 0);
+        const dayExp = getExpensesByDateRange(key, key).reduce((s, x) => s + (x.total || 0), 0);
+        ingresosData.push(daySales);
+        egresosData.push(dayExp);
+      }
+
+      if (chartInstance) chartInstance.destroy();
+      const ctx = document.getElementById('chartIngresosEgresos').getContext('2d');
+      chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: days,
+          datasets: [
+            { label: 'Ingresos', data: ingresosData, backgroundColor: 'rgba(34, 197, 94, 0.7)', borderRadius: 6 },
+            { label: 'Egresos', data: egresosData, backgroundColor: 'rgba(239, 68, 68, 0.7)', borderRadius: 6 }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { position: 'top' } },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+    }
+
+    // ==================== INVENTARIO ====================
+    function loadInventory() {
+      const products = getProducts(false);
+      const cats = getCategories();
+      const tbody = document.getElementById('productsTableBody');
+      tbody.innerHTML = products.map(p => {
+        const cat = cats.find(c => c.id === p.category);
+        const stockClass = (p.stock || 0) <= (p.min_stock || 5) ? 'text-red-600 font-bold' : 'text-green-600';
+        return `
+          <tr class="hover:bg-pink-50/50">
+            <td class="px-4 py-3">
+              <div class="flex items-center gap-2">
+                <span class="text-xl">${p.emoji || '🍦'}</span>
+                <span class="font-medium">${p.name}</span>
+              </div>
+            </td>
+            <td class="px-4 py-3 text-gray-600">${cat ? cat.name : p.category}</td>
+            <td class="px-4 py-3 text-right font-semibold">${formatMoney(p.price)}</td>
+            <td class="px-4 py-3 text-center ${stockClass}">${p.stock || 0}</td>
+            <td class="px-4 py-3 text-center">${p.min_stock || 5}</td>
+            <td class="px-4 py-3 text-center">
+              <span class="px-2 py-1 rounded-full text-xs font-semibold ${p.active !== false ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">
+                ${p.active !== false ? 'Activo' : 'Inactivo'}
+              </span>
+            </td>
+            <td class="px-4 py-3 text-center">
+              <button onclick="editProduct(${p.id})" class="bg-blue-600 text-white text-xs px-3 py-1 rounded-lg mr-1 hover:bg-blue-700">Editar</button>
+              <button onclick="adjustStock(${p.id})" class="bg-teal-600 text-white text-xs px-3 py-1 rounded-lg hover:bg-teal-700">Stock</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function openProductModal(product = null) {
+      document.getElementById('modalTitle').textContent = product ? 'Editar Producto' : 'Nuevo Producto';
+      document.getElementById('prodId').value = product ? product.id : '';
+      document.getElementById('prodName').value = product ? product.name : '';
+      document.getElementById('prodDesc').value = product ? product.desc || '' : '';
+      document.getElementById('prodEmoji').value = product ? product.emoji || '🍦' : '🍦';
+      document.getElementById('prodPrice').value = product ? product.price : '';
+      document.getElementById('prodStock').value = product ? product.stock : 0;
+      document.getElementById('prodMin').value = product ? product.min_stock : 5;
+      document.getElementById('prodActive').checked = product ? product.active !== false : true;
+      document.getElementById('prodPopular').checked = product ? !!product.popular : false;
+
+      const sel = document.getElementById('prodCategory');
+      sel.innerHTML = getCategories().map(c => `<option value="${c.id}" ${product && product.category === c.id ? 'selected' : ''}>${c.name}</option>`).join('');
+
+      document.getElementById('productModal').classList.remove('hidden');
+      document.getElementById('productModal').classList.add('flex');
+    }
+
+    function closeProductModal() {
+      document.getElementById('productModal').classList.add('hidden');
+      document.getElementById('productModal').classList.remove('flex');
+    }
+
+    function editProduct(id) {
+      const p = getProductById(id);
+      if (p) openProductModal(p);
+    }
+
+    function adjustStock(id) {
+      const p = getProductById(id);
+      if (!p) return;
+      const delta = prompt(`Ajustar stock de "${p.name}"\nStock actual: ${p.stock}\nIngresa la cantidad a sumar o restar (ej: 10 o -5):`, '0');
+      if (delta === null) return;
+      const num = parseInt(delta, 10);
+      if (isNaN(num)) return alert('Número inválido');
+      updateStock(id, num);
+      loadInventory();
+      loadDashboard();
+    }
+
+    document.getElementById('productForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const id = document.getElementById('prodId').value;
+      const product = {
+        id: id ? Number(id) : Date.now(),
+        name: document.getElementById('prodName').value.trim(),
+        desc: document.getElementById('prodDesc').value.trim(),
+        category: document.getElementById('prodCategory').value,
+        emoji: document.getElementById('prodEmoji').value.trim() || '🍦',
+        price: parseFloat(document.getElementById('prodPrice').value) || 0,
+        stock: parseInt(document.getElementById('prodStock').value) || 0,
+        min_stock: parseInt(document.getElementById('prodMin').value) || 5,
+        active: document.getElementById('prodActive').checked,
+        popular: document.getElementById('prodPopular').checked
+      };
+      saveProduct(product);
+      closeProductModal();
+      loadInventory();
+    });
+
+    // ==================== REPORTES ====================
+    let currentReport = { from: '', to: '', sales: [], expenses: [] };
+
+    function setReportRange(type) {
+      const today = new Date();
+      let from, to = today.toISOString().split('T')[0];
+      if (type === 'week') {
+        const d = new Date(today);
+        d.setDate(d.getDate() - 6);
+        from = d.toISOString().split('T')[0];
+        document.getElementById('btnWeek').className = 'px-4 py-2 rounded-full text-sm font-semibold bg-pink-100 text-dulce-fucsia';
+        document.getElementById('btnMonth').className = 'px-4 py-2 rounded-full text-sm font-semibold bg-gray-100 text-gray-600';
+      } else {
+        from = today.toISOString().slice(0, 8) + '01';
+        document.getElementById('btnMonth').className = 'px-4 py-2 rounded-full text-sm font-semibold bg-pink-100 text-dulce-fucsia';
+        document.getElementById('btnWeek').className = 'px-4 py-2 rounded-full text-sm font-semibold bg-gray-100 text-gray-600';
+      }
+      document.getElementById('reportFrom').value = from;
+      document.getElementById('reportTo').value = to;
+      generateReport();
+    }
+
+    function generateReport() {
+      const from = document.getElementById('reportFrom').value;
+      const to = document.getElementById('reportTo').value;
+      if (!from || !to) return alert('Selecciona el rango de fechas');
+
+      const sales = getSalesByDateRange(from, to);
+      const expenses = getExpensesByDateRange(from, to);
+      const ingresos = sales.reduce((s, x) => s + x.total, 0);
+      const egresos = expenses.reduce((s, x) => s + (x.total || 0), 0);
+
+      currentReport = { from, to, sales, expenses, ingresos, egresos };
+
+      document.getElementById('repIngresos').textContent = formatMoney(ingresos);
+      document.getElementById('repPedidos').textContent = sales.length + ' pedidos';
+      document.getElementById('repEgresos').textContent = formatMoney(egresos);
+      document.getElementById('repGastos').textContent = expenses.length + ' registros';
+      document.getElementById('repUtilidad').textContent = formatMoney(ingresos - egresos);
+      document.getElementById('repPeriod').textContent = from + ' → ' + to;
+
+      // Detail table
+      let html = '<h4 class="font-bold mb-2 mt-4">Detalle de Ventas</h4>';
+      if (sales.length) {
+        html += `<table class="w-full text-sm border"><thead class="bg-gray-100"><tr><th class="p-2 text-left">Ticket</th><th>Fecha</th><th>Tipo</th><th class="text-right">Total</th></tr></thead><tbody>`;
+        sales.forEach(s => {
+          html += `<tr class="border-t"><td class="p-2">${s.ticket}</td><td>${s.created_at.slice(0,10)}</td><td>${s.order_type}</td><td class="text-right font-semibold">${formatMoney(s.total)}</td></tr>`;
+        });
+        html += '</tbody></table>';
+      } else html += '<p class="text-gray-400 text-sm">Sin ventas en el período</p>';
+
+      html += '<h4 class="font-bold mb-2 mt-6">Detalle de Gastos</h4>';
+      if (expenses.length) {
+        html += `<table class="w-full text-sm border"><thead class="bg-gray-100"><tr><th class="p-2 text-left">Fecha</th><th>Proveedor</th><th>Descripción</th><th class="text-right">Total</th></tr></thead><tbody>`;
+        expenses.forEach(e => {
+          html += `<tr class="border-t"><td class="p-2">${e.date || e.created_at.slice(0,10)}</td><td>${e.provider || '-'}</td><td>${e.description || '-'}</td><td class="text-right font-semibold text-red-600">${formatMoney(e.total)}</td></tr>`;
+        });
+        html += '</tbody></table>';
+      } else html += '<p class="text-gray-400 text-sm">Sin gastos en el período</p>';
+
+      document.getElementById('reportDetail').innerHTML = html;
+    }
+
+    function exportExcel() {
+      if (!currentReport.sales && !currentReport.expenses) return alert('Genera el reporte primero');
+      const wb = XLSX.utils.book_new();
+
+      // Resumen
+      const resumen = [
+        ['REPORTE INGRESOS / EGRESOS - DULCE DÚO'],
+        ['Período', currentReport.from + ' a ' + currentReport.to],
+        [],
+        ['Concepto', 'Monto'],
+        ['Ingresos (Ventas)', currentReport.ingresos],
+        ['Egresos (Gastos)', currentReport.egresos],
+        ['Utilidad', currentReport.ingresos - currentReport.egresos],
+        [],
+        ['Pedidos', currentReport.sales.length],
+        ['Registros de gastos', currentReport.expenses.length]
+      ];
+      const ws1 = XLSX.utils.aoa_to_sheet(resumen);
+      XLSX.utils.book_append_sheet(wb, ws1, 'Resumen');
+
+      // Ventas
+      const ventasData = [['Ticket', 'Fecha', 'Tipo', 'Subtotal', 'IVA', 'Total']];
+      currentReport.sales.forEach(s => {
+        ventasData.push([s.ticket, s.created_at.slice(0,10), s.order_type, s.subtotal, s.tax, s.total]);
+      });
+      const ws2 = XLSX.utils.aoa_to_sheet(ventasData);
+      XLSX.utils.book_append_sheet(wb, ws2, 'Ventas');
+
+      // Gastos
+      const gastosData = [['Fecha', 'Proveedor', 'Factura', 'Descripción', 'Cantidad', 'Unidad', 'P.Unit', 'IVA%', 'Total']];
+      currentReport.expenses.forEach(e => {
+        gastosData.push([e.date, e.provider, e.invoice_number, e.description, e.quantity, e.unit, e.unit_price, e.iva_rate, e.total]);
+      });
+      const ws3 = XLSX.utils.aoa_to_sheet(gastosData);
+      XLSX.utils.book_append_sheet(wb, ws3, 'Gastos');
+
+      XLSX.writeFile(wb, `Reporte_DulceDuo_${currentReport.from}_${currentReport.to}.xlsx`);
+    }
+
+    function printReport() {
+      const content = document.getElementById('reportSummary').innerHTML + document.getElementById('reportDetail').innerHTML;
+      const w = window.open('', '_blank');
+      w.document.write(`
+        <html><head><title>Reporte Dulce Dúo</title>
+        <style>body{font-family:sans-serif;padding:20px} table{width:100%;border-collapse:collapse} th,td{border:1px solid #ddd;padding:8px;text-align:left} th{background:#f5f5f5}</style>
+        </head><body>
+        <h1>Dulce Dúo - Reporte Ingresos/Egresos</h1>
+        <p>Período: ${currentReport.from} → ${currentReport.to}</p>
+        ${content}
+        <script>window.print();<\/script>
+        </body></html>
+      `);
+      w.document.close();
+    }
+
+    // ==================== GASTOS ====================
+    function calcExpense() {
+      const qty = parseFloat(document.getElementById('expQty').value) || 0;
+      const price = parseFloat(document.getElementById('expPrice').value) || 0;
+      const ivaRate = parseFloat(document.getElementById('expIva').value) || 0;
+      const subtotal = qty * price;
+      const ivaAmount = subtotal * (ivaRate / 100);
+      const total = subtotal + ivaAmount;
+      document.getElementById('expSubtotal').textContent = formatMoney(subtotal);
+      document.getElementById('expIvaAmount').textContent = formatMoney(ivaAmount);
+      document.getElementById('expTotal').textContent = formatMoney(total);
+      return { subtotal, ivaAmount, total, ivaRate };
+    }
+
+    ['expQty', 'expPrice', 'expIva'].forEach(id => {
+      document.getElementById(id).addEventListener('input', calcExpense);
+      document.getElementById(id).addEventListener('change', calcExpense);
+    });
+
+    document.getElementById('expenseForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const calc = calcExpense();
+      const expense = {
+        provider: document.getElementById('expProvider').value.trim(),
+        invoice_number: document.getElementById('expInvoice').value.trim(),
+        date: document.getElementById('expDate').value,
+        description: document.getElementById('expDesc').value.trim(),
+        quantity: parseFloat(document.getElementById('expQty').value),
+        unit: document.getElementById('expUnit').value,
+        unit_price: parseFloat(document.getElementById('expPrice').value),
+        iva_rate: calc.ivaRate,
+        category: document.getElementById('expCategory').value,
+        subtotal: calc.subtotal,
+        iva_amount: calc.ivaAmount,
+        total: calc.total
+      };
+      addExpense(expense);
+      alert('Gasto registrado correctamente');
+      this.reset();
+      document.getElementById('expDate').value = getToday();
+      calcExpense();
+      showSection('dashboard');
+    });
+
+    // Init
+    loadDashboard();
+  </script>
+</body>
+</html>

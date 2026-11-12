@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dulce Dúo - Heladería y algo más | Sistema POS & Menú Digital</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Fredoka (redondeada y dulce) y Poppins (limpia y moderna) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome para iconos limpios -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Configuración de colores personalizados basados en el Logo image_971bb4.jpg -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'display': ['Fredoka', 'cursive', 'sans-serif'],
+                        'sans': ['Poppins', 'sans-serif'],
+                    },
+                    colors: {
+                        dulce: {
+                            fucsia: '#E91E63',
+                            fucsiaDark: '#C2185B',
+                            rosaSuave: '#FCE4EC',
+                            rosaFondo: '#FFF0F5',
+                            rosaMedio: '#F8BBD0',
+                            caramelo: '#D4883C',
+                            carameloLight: '#F3C68F',
+                            cafe: '#6D3B1E',
+                            crema: '#FFFDF9',
+                        }
+                    },
+                    boxShadow: {
+                        'dulce': '0 10px 25px -5px rgba(233, 30, 99, 0.15), 0 8px 10px -6px rgba(233, 30, 99, 0.1)',
+                        'card': '0 4px 20px rgba(212, 136, 60, 0.08)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Estilos personalizados complementarios */
+        body {
+            background-color: #FFF0F5;
+            background-image: radial-gradient(#F8BBD0 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+
+        /* Scrollbar personalizada estética */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #FCE4EC;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #F48FB1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #E91E63;
+        }
+
+        /* Animación suave para tarjetas */
+        .category-card {
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .category-card:hover {
+            transform: translateY(-6px) scale(1.02);
+        }
+        .category-card.active {
+            background: linear-gradient(135deg, #E91E63 0%, #D81B60 100%);
+            color: white;
+            border-color: #AD1457;
+            box-shadow: 0 12px 24px -6px rgba(233, 30, 99, 0.4);
+        }
+        
+        /* Efecto brillo en el logo */
+        .logo-glow {
+            box-shadow: 0 0 25px rgba(233, 30, 99, 0.35);
+        }
+    </style>
+</head>
+<body class="font-sans text-gray-800 min-h-screen flex flex-col">
+
+    <!-- BARRA SUPERIOR / HEADER -->
+    <header class="bg-white/95 backdrop-blur-md border-b-2 border-dulce-rosaMedio sticky top-0 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-4">
+            
+            <!-- Marca y Logo -->
+            <div class="flex items-center gap-4">
+                <div class="relative group">
+                    <!-- Contenedor circular del logo con fallback SVG integrado por si la imagen externa falla -->
+                    <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full p-1 bg-gradient-to-tr from-dulce-fucsia via-pink-400 to-dulce-caramelo logo-glow overflow-hidden flex items-center justify-center bg-white">
+                        <img 
+                            src="image_971bb4.jpg" 
+                            alt="Logo Dulce Dúo" 
+                            class="w-full h-full object-cover rounded-full"
+                            onerror="this.style.display='none'; document.getElementById('logo-fallback').style.display='flex';"
+                        >
+                        <!-- Fallback visual fiel al logo por si se abre fuera del entorno con la imagen local -->
+                        <div id="logo-fallback" style="display:none;" class="w-full h-full rounded-full bg-gradient-to-b from-pink-100 to-pink-200 flex-col items-center justify-center text-center p-1">
+                            <span class="text-xl leading-none">🍦☕</span>
+                            <span class="font-display font-bold text-[10px] text-dulce-fucsia leading-tight mt-0.5">Dulce Dúo</span>
+                        </div>
+                    </div>
+                    <span class="absolute -bottom-1 -right-1 bg-dulce-caramelo text-white text-xs px-2 py-0.5 rounded-full font-display font-semibold shadow">
+                        POS
+                    </span>
+                </div>
+
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="font-display text-2xl sm:text-3xl font-bold text-dulce-fucsia tracking-tight">
+                            Dulce Dúo
+                        </h1>
+                        <span class="hidden sm:inline-block bg-dulce-rosaSuave text-dulce-fucsiaDark text-xs font-semibold px-3 py-1 rounded-full border border-pink-200">
+                            <i class="fa-solid fa-heart text-dulce-fucsia mr-1"></i> Menú Digital
+                        </span>
+                    </div>
+                    <p class="text-xs sm:text-sm font-medium text-dulce-cafe tracking-wider uppercase">
+                        — Heladería y algo más —
+                    </p>
+                </div>
+            </div>
+
+            <!-- Buscador rápido y estado de caja -->
+            <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                <div class="relative flex-1 sm:w-64">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-pink-400"></i>
+                    <input 
+                        type="text" 
+                        id="searchInput"
+                        placeholder="Buscar helado, café, waffle..." 
+                        class="w-full pl-10 pr-4 py-2.5 bg-dulce-rosaFondo border-2 border-pink-200 rounded-2xl text-sm focus:outline-none focus:border-dulce-fucsia transition-colors placeholder-pink-400/80"
+                    >
+                </div>
+
+                <!-- Botón carrito móvil -->
+                <button 
+                    onclick="toggleMobileCart()"
+                    class="lg:hidden relative bg-dulce-fucsia hover:bg-dulce-fucsiaDark text-white p-3 rounded-2xl shadow-dulce transition active:scale-95"
+                    aria-label="Ver pedido"
+                >
+                    <i class="fa-solid fa-basket-shopping text-lg"></i>
+                    <span id="mobileCartBadge" class="absolute -top-2 -right-2 bg-dulce-caramelo text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center border-2 border-white">
+                        0
+                    </span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- SECCIÓN IZQUIERDA (8 columnas en desktop): CATEGORÍAS Y PRODUCTOS -->
+        <div class="lg:col-span-8 flex flex-col gap-8">
+            
+            <!-- Banner de Bienvenida -->
+            <div class="bg-gradient-to-r from-dulce-fucsia via-pink-500 to-dulce-caramelo rounded-3xl p-6 text-white shadow-dulce relative overflow-hidden">
+                <div class="relative z-10 max-w-lg">
+                    <span class="inline-block bg-white/20 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1 rounded-full mb-2">
+                        ✨ ¡Bienvenido a Dulce Dúo!
+                    </span>
+                    <h2 class="font-display text-2xl sm:text-3xl font-bold mb-1">
+                        ¿Qué se te antoja hoy?
+                    </h2>
+                    <p class="text-pink-100 text-sm sm:text-base">
+                        Selecciona una de nuestras 6 categorías deliciosas para explorar el menú y armar tu pedido.
+                    </p>
+                </div>
+                <!-- Decoración visual de fondo -->
+                <div class="absolute right-4 -bottom-4 text-7xl sm:text-8xl opacity-25 select-none pointer-events-none">
+                    🍨🧇☕
+                </div>
+            </div>
+
+            <!-- SECCIÓN DE 6 CATEGORÍAS PRINCIPALES -->
+            <section aria-labelledby="categorias-heading">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 id="categorias-heading" class="font-display text-xl sm:text-2xl font-bold text-dulce-cafe flex items-center gap-2">
+                        <span class="w-3 h-7 bg-dulce-fucsia rounded-full inline-block"></span>
+                        Nuestras Categorías
+                    </h3>
+                    <button 
+                        onclick="selectCategory('all')" 
+                        id="btnShowAll"
+                        class="text-sm font-semibold text-dulce-fucsia hover:text-dulce-fucsiaDark underline underline-offset-4 transition"
+                    >
+                        Ver todo el menú
+                    </button>
+                </div>
+
+                <!-- Grid de las 6 Categorías requeridas -->
+                <div id="categoriesGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    <!-- Se renderiza dinámicamente mediante JS -->
+                </div>
+            </section>
+
+            <!-- SECCIÓN DE PRODUCTOS DE LA CATEGORÍA SELECCIONADA -->
+            <section aria-labelledby="productos-heading" class="bg-white/80 backdrop-blur-sm rounded-3xl p-5 sm:p-6 border-2 border-pink-100 shadow-card">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-6 pb-4 border-b border-pink-100">
+                    <div>
+                        <h3 id="productos-heading" class="font-display text-xl sm:text-2xl font-bold text-dulce-fucsia">
+                            Todos los Productos
+                        </h3>
+                        <p id="categorySubtitle" class="text-sm text-gray-500">
+                            Explora nuestras especialidades preparadas al momento
+                        </p>
+                    </div>
+                    <span id="productCountBadge" class="bg-dulce-rosaSuave text-dulce-fucsiaDark font-display font-semibold text-sm px-4 py-1.5 rounded-full">
+                        18 opciones
+                    </span>
+                </div>
+
+                <!-- Grid de Productos -->
+                <div id="productsGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Tarjetas de producto generadas por JS -->
+                </div>
+            </section>
+
+        </div>
+
+        <!-- SECCIÓN DERECHA (4 columnas en desktop): CARRITO / RESUMEN DE ORDEN POS -->
+        <aside id="cartSidebar" class="hidden lg:flex lg:col-span-4 flex-col bg-white rounded-3xl border-2 border-pink-200 shadow-dulce h-[calc(100vh-7.5rem)] sticky top-24 overflow-hidden">
+            
+            <!-- Cabecera del Ticket / Pedido -->
+            <div class="bg-gradient-to-r from-dulce-rosaSuave to-pink-100 px-6 py-4 border-b-2 border-pink-200 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-10 h-10 rounded-2xl bg-dulce-fucsia text-white flex items-center justify-center shadow">
+                        <i class="fa-solid fa-receipt text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-display font-bold text-lg text-dulce-cafe leading-tight">Tu Pedido</h3>
+                        <p class="text-xs text-dulce-fucsiaDark font-medium">Orden #0042 • Mesa / Llevar</p>
+                    </div>
+                </div>
+                <button 
+                    onclick="clearCart()" 
+                    title="Vaciar orden"
+                    class="text-xs font-semibold text-gray-400 hover:text-red-500 transition px-2 py-1 rounded-lg hover:bg-white/60"
+                >
+                    <i class="fa-solid fa-trash-can mr-1"></i>Limpiar
+                </button>
+            </div>
+
+            <!-- Selector rápido de Tipo de Orden -->
+            <div class="px-6 pt-3 pb-2 bg-dulce-crema border-b border-pink-100 flex gap-2">
+                <button onclick="setOrderType('Mesa')" id="typeMesa" class="flex-1 py-1.5 px-3 rounded-xl text-xs font-semibold bg-dulce-fucsia text-white shadow-sm transition">
+                    <i class="fa-solid fa-utensils mr-1"></i> En Local
+                </button>
+                <button onclick="setOrderType('Llevar')" id="typeLlevar" class="flex-1 py-1.5 px-3 rounded-xl text-xs font-semibold bg-pink-50 text-dulce-cafe hover:bg-pink-100 transition">
+                    <i class="fa-solid fa-bag-shopping mr-1"></i> Para Llevar
+                </button>
+            </div>
+
+            <!-- Lista de productos agregados -->
+            <div id="cartItemsContainer" class="flex-1 overflow-y-auto p-5 space-y-3">
+                <!-- Estado vacío inicial -->
+                <div class="h-full flex flex-col items-center justify-center text-center p-6 text-gray-400">
+                    <div class="w-20 h-20 rounded-full bg-dulce-rosaFondo flex items-center justify-center text-4xl mb-3">
+                        🍦
+                    </div>
+                    <p class="font-display font-semibold text-gray-600 text-base">Aún no hay antojos aquí</p>
+                    <p class="text-xs mt-1 max-w-[200px]">Haz clic en el botón "+ Agregar" de cualquier producto del menú.</p>
+                </div>
+            </div>
+
+            <!-- Resumen de Totales y Botón Cobrar -->
+            <div class="p-5 bg-dulce-rosaFondo/70 border-t-2 border-pink-200 space-y-3">
+                <div class="space-y-1.5 text-sm">
+                    <div class="flex justify-between text-gray-600">
+                        <span>Subtotal</span>
+                        <span id="subtotalText" class="font-medium">$0.00</span>
+                    </div>
+                    <div class="flex justify-between text-gray-600">
+                        <span>IVA (15%)</span>
+                        <span id="taxText" class="font-medium">$0.00</span>
+                    </div>
+                    <div class="flex justify-between items-center pt-2 border-t border-pink-200">
+                        <span class="font-display font-bold text-lg text-dulce-cafe">Total a Pagar</span>
+                        <span id="totalText" class="font-display font-bold text-2xl text-dulce-fucsia">$0.00</span>
+                    </div>
+                </div>
+
+                <button 
+                    onclick="processOrder()"
+                    id="checkoutBtn"
+                    disabled
+                    class="w-full py-3.5 px-6 rounded-2xl font-display font-bold text-base text-white bg-gradient-to-r from-dulce-fucsia to-pink-600 hover:from-dulce-fucsiaDark hover:to-pink-700 disabled:opacity-40 disabled:cursor-not-allowed shadow-dulce transition transform active:scale-98 flex items-center justify-center gap-2"
+                >
+                    <i class="fa-solid fa-heart"></i>
+                    <span>Confirmar Pedido</span>
+                </button>
+            </div>
+        </aside>
+
+    </main>
+
+    <!-- MODAL CARRITO PARA MÓVILES -->
+    <div id="mobileCartModal" class="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 hidden lg:hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl border-2 border-pink-200 shadow-2xl max-h-[85vh] flex flex-col overflow-hidden">
+            <div class="bg-dulce-rosaSuave px-6 py-4 flex items-center justify-between border-b border-pink-200">
+                <h3 class="font-display font-bold text-xl text-dulce-fucsia flex items-center gap-2">
+                    <i class="fa-solid fa-basket-shopping"></i> Resumen de Orden
+                </h3>
+                <button onclick="toggleMobileCart()" class="w-8 h-8 rounded-full bg-white text-gray-600 flex items-center justify-center hover:bg-pink-100">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div id="mobileCartItems" class="flex-1 overflow-y-auto p-5 space-y-3"></div>
+            <div class="p-5 bg-dulce-rosaFondo border-t border-pink-200 space-y-3">
+                <div class="flex justify-between items-center">
+                    <span class="font-display font-bold text-lg text-dulce-cafe">Total:</span>
+                    <span id="mobileTotalText" class="font-display font-bold text-2xl text-dulce-fucsia">$0.00</span>
+                </div>
+                <button onclick="processOrder()" class="w-full py-3.5 rounded-2xl font-display font-bold text-white bg-dulce-fucsia hover:bg-dulce-fucsiaDark shadow-dulce">
+                    Confirmar Pedido
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE CONFIRMACIÓN DE PEDIDO (Reemplaza cualquier alert()) -->
+    <div id="confirmationModal" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 text-center border-4 border-pink-200 shadow-2xl transform transition-all">
+            <div class="w-20 h-20 rounded-full bg-green-100 text-green-600 mx-auto flex items-center justify-center text-4xl mb-4 shadow-inner">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <h3 class="font-display text-2xl font-bold text-dulce-fucsia mb-2">¡Pedido Enviado!</h3>
+            <p class="text-sm text-gray-600 mb-4">
+                La orden <span class="font-bold text-dulce-cafe">#0042</span> (<span id="confirmOrderType">En Local</span>) ha sido enviada a preparación en <span class="font-semibold text-dulce-fucsia">Dulce Dúo</span>.
+            </p>
+            <div class="bg-dulce-rosaFondo rounded-2xl p-3 mb-5 border border-pink-200">
+                <span class="text-xs text-gray-500 block">Total cobrado</span>
+                <span id="confirmOrderTotal" class="font-display text-2xl font-bold text-dulce-cafe">$0.00</span>
+            </div>
+            <button 
+                onclick="closeConfirmationModal()" 
+                class="w-full py-3 rounded-2xl font-display font-bold text-white bg-gradient-to-r from-dulce-fucsia to-dulce-caramelo hover:opacity-95 shadow-md transition"
+            >
+                ¡Listo, nueva orden!
+            </button>
+        </div>
+    </div>
+
+    <!-- NOTIFICACIÓN TOAST FLOTANTE -->
+    <div id="toastNotification" class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-dulce-cafe text-white px-5 py-3 rounded-full shadow-xl font-medium text-sm flex items-center gap-2.5 opacity-0 pointer-events-none transition-all duration-300 z-50">
+        <i class="fa-solid fa-heart text-pink-400"></i>
+        <span id="toastMessage">Producto agregado</span>
+    </div>
+
+    <!-- LÓGICA JAVASCRIPT DEL MENÚ Y SISTEMA POS -->
+    <script>
+        // 1. Definición de las 6 Categorías exactas solicitadas con colores e iconos acordes al logo
+        const categories = [
+            {
+                id: 'frappes',
+                name: 'Frappés',
+                icon: '🥤',
+                badgeColor: 'bg-pink-100 text-dulce-fucsia',
+                description: 'Cremosos, helados y coronados con crema batida',
+                accent: 'border-pink-300'
+            },
+            {
+                id: 'helados',
+                name: 'Helados Clásicos',
+                icon: '🍦',
+                badgeColor: 'bg-rose-100 text-rose-700',
+                description: 'Conos crujientes, copas y sabores artesanales',
+                accent: 'border-rose-300'
+            },
+            {
+                id: 'waffles',
+                name: 'Waffles',
+                icon: '🧇',
+                badgeColor: 'bg-amber-100 text-amber-800',
+                description: 'Doraditos por fuera, esponjosos con helado y frutas',
+                accent: 'border-amber-300'
+            },
+            {
+                id: 'antojitos',
+                name: 'Antojitos y Dulces',
+                icon: '🍰',
+                badgeColor: 'bg-fuchsia-100 text-fuchsia-800',
+                description: 'Postres irresistibles, crepas, brownies y más',
+                accent: 'border-fuchsia-300'
+            },
+            {
+                id: 'batidos',
+                name: 'Batidos Naturales',
+                icon: '🍓',
+                badgeColor: 'bg-red-100 text-red-700',
+                description: 'Fruta fresca seleccionada batida al instante',
+                accent: 'border-red-300'
+            },
+            {
+                id: 'tostadas-cafe',
+                name: 'Tostadas y Café',
+                icon: '☕',
+                badgeColor: 'bg-orange-100 text-dulce-cafe',
+                description: 'Café pasado aromático y tostadas crujientes',
+                accent: 'border-orange-300'
+            }
+        ];
+
+        // 2. Catálogo completo de productos de ejemplo para las 6 categorías
+        const products = [
+            // 1. Frappés
+            { id: 101, category: 'frappes', name: 'Frappé Dulce Dúo Fresa', desc: 'Fresa natural, helado de vainilla, crema chantilly y cereza.', price: 4.50, emoji: '🥤', popular: true },
+            { id: 102, category: 'frappes', name: 'Frappé Mocha Caramelo', desc: 'Espresso intenso, chocolate, salsa de caramelo y crema.', price: 4.75, emoji: '🧋', popular: false },
+            { id: 103, category: 'frappes', name: 'Frappé Oreo Tentación', desc: 'Galletas Oreo trituradas con base cremosa de leche y sirope.', price: 4.80, emoji: '🍪', popular: true },
+            
+            // 2. Helados Clásicos
+            { id: 201, category: 'helados', name: 'Cono Dúo Corazón', desc: 'Dos bolas artesanales (Fresa y Vainilla) en cono galleta.', price: 3.25, emoji: '🍦', popular: true },
+            { id: 202, category: 'helados', name: 'Copa Banana Split', desc: 'Tres sabores de helado, banano fresco, crema y nueces.', price: 5.50, emoji: '🍨', popular: false },
+            { id: 203, category: 'helados', name: 'Tulipa Suprema de Frutos Rojos', desc: 'Canasta de barquillo con helado y coulis tibio de mora.', price: 4.90, emoji: '🍧', popular: false },
+
+            // 3. Waffles
+            { id: 301, category: 'waffles', name: 'Waffle Amor de Fresa', desc: 'Waffle belga, fresas frescas, bola de helado y leche condensada.', price: 5.75, emoji: '🧇', popular: true },
+            { id: 302, category: 'waffles', name: 'Waffle Choco-Avellana', desc: 'Bañado en crema de avellanas, banano caramelizado y helado.', price: 6.00, emoji: '🍫', popular: false },
+            { id: 303, category: 'waffles', name: 'Mini Waffles Dúo (6 uds)', desc: 'Ideales para compartir con miel de maple y frutas picadas.', price: 4.50, emoji: '🍯', popular: false },
+
+            // 4. Antojitos y Dulces
+            { id: 401, category: 'antojitos', name: 'Brownie Tibio con Helado', desc: 'Brownie de chocolate oscuro coronado con helado de vainilla.', price: 4.60, emoji: ' brownies'.replace(' ', '') && '🍫', popular: true },
+            { id: 402, category: 'antojitos', name: 'Fresas con Crema Especial', desc: 'Fresas seleccionadas con nuestra crema dulce secreta de la casa.', price: 3.75, emoji: '🍓', popular: true },
+            { id: 403, category: 'antojitos', name: 'Cheesecake de Maracuyá', desc: 'Porción cremosa con base de galleta dorada y glaseado tropical.', price: 4.25, emoji: '🍰', popular: false },
+
+            // 5. Batidos Naturales
+            { id: 501, category: 'batidos', name: 'Batido Cremoso de Mora y Fresa', desc: '100% fruta natural en leche o agua, refrescante y nutritivo.', price: 3.00, emoji: '🍓', popular: true },
+            { id: 502, category: 'batidos', name: 'Batido Tropical Mango-Maracuyá', desc: 'Pulpa natural de mango dulce con toque ácido de maracuyá.', price: 3.25, emoji: '🥭', popular: false },
+            { id: 503, category: 'batidos', name: 'Batido Energético Guanábana', desc: 'Pulpa pura de guanábana batida con leche fría.', price: 3.25, emoji: '🥤', popular: false },
+
+            // 6. Tostadas y Café
+            { id: 601, category: 'tostadas-cafe', name: 'Combo Tostada Mixta + Café', desc: 'Tostada crocante de jamón y queso + taza de café pasado.', price: 3.90, emoji: '🥪', popular: true },
+            { id: 602, category: 'tostadas-cafe', name: 'Cappuccino Cremoso Dúo', desc: 'Café arábigo de altura con espuma sedosa y toque de canela.', price: 2.75, emoji: '☕', popular: true },
+            { id: 603, category: 'tostadas-cafe', name: 'Tostadas Francesas con Miel', desc: 'Pan brioche dorado con mantequilla, canela y miel de abeja.', price: 4.10, emoji: '🍞', popular: false }
+        ];
+
+        // Estado de la aplicación
+        let selectedCategory = 'all';
+        let searchQuery = '';
+        let cart = [];
+        let orderType = 'Mesa';
+
+        // Inicializar la interfaz al cargar
+        window.onload = function() {
+            renderCategories();
+            renderProducts();
+            updateCartUI();
+
+            // Listener del buscador en tiempo real
+            document.getElementById('searchInput').addEventListener('input', (e) => {
+                searchQuery = e.target.value.toLowerCase().trim();
+                renderProducts();
+            });
+        };
+
+        // Renderizar las 6 Tarjetas de Categorías Principales
+        function renderCategories() {
+            const grid = document.getElementById('categoriesGrid');
+            grid.innerHTML = categories.map(cat => {
+                const isActive = selectedCategory === cat.id;
+                const count = products.filter(p => p.category === cat.id).length;
+                
+                return `
+                    <button 
+                        onclick="selectCategory('${cat.id}')"
+                        class="category-card text-left p-4 sm:p-5 rounded-3xl border-2 ${isActive ? 'active' : 'bg-white hover:bg-pink-50/70 ' + cat.accent} shadow-card flex flex-col justify-between group cursor-pointer"
+                    >
+                        <div class="flex items-start justify-between w-full mb-3">
+                            <span class="text-3xl sm:text-4xl p-2.5 rounded-2xl ${isActive ? 'bg-white/20' : 'bg-dulce-rosaFondo'} group-hover:scale-110 transition-transform">
+                                ${cat.icon}
+                            </span>
+                            <span class="text-xs font-bold px-2.5 py-1 rounded-full ${isActive ? 'bg-white text-dulce-fucsia' : cat.badgeColor}">
+                                ${count} ítems
+                            </span>
+                        </div>
+                        <div>
+                            <h4 class="font-display font-bold text-base sm:text-lg leading-snug ${isActive ? 'text-white' : 'text-dulce-cafe'}">
+                                ${cat.name}
+                            </h4>
+                            <p class="text-xs mt-1 line-clamp-2 ${isActive ? 'text-pink-100' : 'text-gray-500'}">
+                                ${cat.description}
+                            </p>
+                        </div>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        // Cambiar categoría seleccionada
+        function selectCategory(categoryId) {
+            selectedCategory = categoryId;
+            renderCategories();
+            renderProducts();
+        }
+
+        // Renderizar tarjetas de productos filtrados
+        function renderProducts() {
+            const grid = document.getElementById('productsGrid');
+            const heading = document.getElementById('productos-heading');
+            const subtitle = document.getElementById('categorySubtitle');
+            const countBadge = document.getElementById('productCountBadge');
+
+            // Filtrar por categoría y búsqueda
+            const filtered = products.filter(prod => {
+                const matchesCat = selectedCategory === 'all' || prod.category === selectedCategory;
+                const matchesSearch = prod.name.toLowerCase().includes(searchQuery) || 
+                                      prod.desc.toLowerCase().includes(searchQuery);
+                return matchesCat && matchesSearch;
+            });
+
+            // Actualizar encabezados de sección
+            if (selectedCategory === 'all') {
+                heading.textContent = searchQuery ? `Resultados para "${searchQuery}"` : 'Menú Completo Dulce Dúo';
+                subtitle.textContent = 'Todas nuestras delicias disponibles hoy';
+            } else {
+                const catObj = categories.find(c => c.id === selectedCategory);
+                heading.textContent = `${catObj.icon} ${catObj.name}`;
+                subtitle.textContent = catObj.description;
+            }
+
+            countBadge.textContent = `${filtered.length} ${filtered.length === 1 ? 'opción' : 'opciones'}`;
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full py-12 text-center">
+                        <div class="text-5xl mb-3">🔍</div>
+                        <h4 class="font-display font-bold text-lg text-gray-700">No encontramos ese producto</h4>
+                        <p class="text-sm text-gray-500 mt-1">Intenta buscar con otro nombre o explora otra categoría.</p>
+                        <button onclick="resetFilters()" class="mt-4 px-5 py-2 bg-dulce-fucsia text-white rounded-full text-sm font-semibold hover:bg-dulce-fucsiaDark transition">
+                            Mostrar todo el menú
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = filtered.map(prod => {
+                const catInfo = categories.find(c => c.id === prod.category);
+                return `
+                    <div class="bg-dulce-crema hover:bg-white rounded-2xl p-4 border-2 border-pink-100 hover:border-dulce-fucsia/50 shadow-xs hover:shadow-dulce transition-all flex flex-col justify-between gap-3">
+                        <div class="flex gap-3.5">
+                            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-dulce-rosaSuave to-amber-50 border border-pink-200 flex items-center justify-center text-3xl shrink-0">
+                                ${prod.emoji}
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-start justify-between gap-1">
+                                    <span class="text-[11px] font-semibold uppercase tracking-wider text-dulce-caramelo">
+                                        ${catInfo.name}
+                                    </span>
+                                    ${prod.popular ? '<span class="bg-pink-100 text-dulce-fucsia text-[10px] font-bold px-2 py-0.5 rounded-full">★ Favorito</span>' : ''}
+                                </div>
+                                <h4 class="font-display font-bold text-base text-gray-800 leading-tight mt-0.5">
+                                    ${prod.name}
+                                </h4>
+                                <p class="text-xs text-gray-500 mt-1 line-clamp-2">
+                                    ${prod.desc}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between pt-2.5 border-t border-pink-100/80">
+                            <span class="font-display font-bold text-xl text-dulce-fucsia">
+                                $${prod.price.toFixed(2)}
+                            </span>
+                            <button 
+                                onclick="addToCart(${prod.id})"
+                                class="bg-dulce-fucsia hover:bg-dulce-fucsiaDark active:scale-95 text-white font-display font-semibold text-sm px-4 py-2 rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                            >
+                                <i class="fa-solid fa-plus text-xs"></i>
+                                <span>Agregar</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function resetFilters() {
+            selectedCategory = 'all';
+            searchQuery = '';
+            document.getElementById('searchInput').value = '';
+            renderCategories();
+            renderProducts();
+        }
+
+        // Funciones del Carrito / POS
+        function addToCart(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+
+            const existingItem = cart.find(item => item.id === productId);
+            if (existingItem) {
+                existingItem.qty += 1;
+            } else {
+                cart.push({ ...product, qty: 1 });
+            }
+
+            updateCartUI();
+            showToast(`¡${product.name} agregado!`);
+        }
+
+        function updateItemQty(productId, delta) {
+            const index = cart.findIndex(item => item.id === productId);
+            if (index === -1) return;
+
+            cart[index].qty += delta;
+            if (cart[index].qty <= 0) {
+                cart.splice(index, 1);
+            }
+            updateCartUI();
+        }
+
+        function clearCart() {
+            cart = [];
+            updateCartUI();
+        }
+
+        function setOrderType(type) {
+            orderType = type;
+            const btnMesa = document.getElementById('typeMesa');
+            const btnLlevar = document.getElementById('typeLlevar');
+            
+            if (type === 'Mesa') {
+                btnMesa.className = 'flex-1 py-1.5 px-3 rounded-xl text-xs font-semibold bg-dulce-fucsia text-white shadow-sm transition';
+                btnLlevar.className = 'flex-1 py-1.5 px-3 rounded-xl text-xs font-semibold bg-pink-50 text-dulce-cafe hover:bg-pink-100 transition';
+            } else {
+                btnLlevar.className = 'flex-1 py-1.5 px-3 rounded-xl text-xs font-semibold bg-dulce-fucsia text-white shadow-sm transition';
+                btnMesa.className = 'flex-1 py-1.5 px-3 rounded-xl text-xs font-semibold bg-pink-50 text-dulce-cafe hover:bg-pink-100 transition';
+            }
+        }
+
+        function updateCartUI() {
+            const container = document.getElementById('cartItemsContainer');
+            const mobileContainer = document.getElementById('mobileCartItems');
+            const mobileBadge = document.getElementById('mobileCartBadge');
+            const checkoutBtn = document.getElementById('checkoutBtn');
+
+            const totalItems = cart.reduce((acc, item) => acc + item.qty, 0);
+            mobileBadge.textContent = totalItems;
+
+            const subtotal = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
+            const tax = subtotal * 0.15;
+            const total = subtotal + tax;
+
+            document.getElementById('subtotalText').textContent = `$${subtotal.toFixed(2)}`;
+            document.getElementById('taxText').textContent = `$${tax.toFixed(2)}`;
+            document.getElementById('totalText').textContent = `$${total.toFixed(2)}`;
+            document.getElementById('mobileTotalText').textContent = `$${total.toFixed(2)}`;
+
+            checkoutBtn.disabled = cart.length === 0;
+
+            if (cart.length === 0) {
+                const emptyHTML = `
+                    <div class="h-full flex flex-col items-center justify-center text-center p-6 text-gray-400">
+                        <div class="w-20 h-20 rounded-full bg-dulce-rosaFondo flex items-center justify-center text-4xl mb-3">
+                            🍦
+                        </div>
+                        <p class="font-display font-semibold text-gray-600 text-base">Aún no hay antojos aquí</p>
+                        <p class="text-xs mt-1 max-w-[200px]">Haz clic en el botón "+ Agregar" de cualquier producto del menú.</p>
+                    </div>
+                `;
+                container.innerHTML = emptyHTML;
+                mobileContainer.innerHTML = emptyHTML;
+                return;
+            }
+
+            const itemsHTML = cart.map(item => `
+                <div class="flex items-center justify-between gap-2 bg-dulce-rosaFondo/60 p-3 rounded-2xl border border-pink-100">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <span class="text-2xl bg-white w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-2xs">
+                            ${item.emoji}
+                        </span>
+                        <div class="min-w-0">
+                            <h5 class="font-display font-semibold text-sm text-gray-800 truncate">${item.name}</h5>
+                            <span class="text-xs font-bold text-dulce-fucsia">$${(item.price * item.qty).toFixed(2)}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5 bg-white px-2 py-1 rounded-xl border border-pink-200 shrink-0">
+                        <button onclick="updateItemQty(${item.id}, -1)" class="w-6 h-6 rounded-lg hover:bg-pink-100 text-dulce-fucsia font-bold flex items-center justify-center">
+                            -
+                        </button>
+                        <span class="text-xs font-bold w-5 text-center">${item.qty}</span>
+                        <button onclick="updateItemQty(${item.id}, 1)" class="w-6 h-6 rounded-lg hover:bg-pink-100 text-dulce-fucsia font-bold flex items-center justify-center">
+                            +
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = itemsHTML;
+            mobileContainer.innerHTML = itemsHTML;
+        }
+
+        function toggleMobileCart() {
+            const modal = document.getElementById('mobileCartModal');
+            modal.classList.toggle('hidden');
+        }
+
+        function processOrder() {
+            if (cart.length === 0) return;
+            
+            const totalText = document.getElementById('totalText').textContent;
+            document.getElementById('confirmOrderTotal').textContent = totalText;
+            document.getElementById('confirmOrderType').textContent = orderType === 'Mesa' ? 'En Local' : 'Para Llevar';
+            
+            // Cerrar modal móvil si está abierto
+            document.getElementById('mobileCartModal').classList.add('hidden');
+            
+            // Mostrar modal de éxito
+            const confirmModal = document.getElementById('confirmationModal');
+            confirmModal.classList.remove('hidden');
+            confirmModal.classList.add('flex');
+        }
+
+        function closeConfirmationModal() {
+            const confirmModal = document.getElementById('confirmationModal');
+            confirmModal.classList.add('hidden');
+            confirmModal.classList.remove('flex');
+            clearCart();
+        }
+
+        let toastTimeout;
+        function showToast(message) {
+            const toast = document.getElementById('toastNotification');
+            document.getElementById('toastMessage').textContent = message;
+            toast.classList.remove('opacity-0', 'translate-y-2');
+            
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+            }, 2200);
+        }
+    </script>
+</body>
+</html>
