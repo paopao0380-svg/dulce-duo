@@ -610,80 +610,332 @@
       document.getElementById('repUtilidad').textContent = formatMoney(ingresos - egresos);
       document.getElementById('repPeriod').textContent = from + ' → ' + to;
 
-      // Detail table
-      let html = '<h4 class="font-bold mb-2 mt-4">Detalle de Ventas</h4>';
+      // ========== Detalle de Ventas ==========
+      let html = '<h4 class="font-bold mb-2 mt-4 text-lg text-dulce-cafe">Detalle de Ventas</h4>';
       if (sales.length) {
-        html += `<table class="w-full text-sm border"><thead class="bg-gray-100"><tr><th class="p-2 text-left">Ticket</th><th>Fecha</th><th>Tipo</th><th class="text-right">Total</th></tr></thead><tbody>`;
-        sales.forEach(s => {
-          html += `<tr class="border-t"><td class="p-2">${s.ticket}</td><td>${s.created_at.slice(0,10)}</td><td>${s.order_type}</td><td class="text-right font-semibold">${formatMoney(s.total)}</td></tr>`;
+        html += `<div class="overflow-x-auto"><table class="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+          <thead class="bg-dulce-fucsia text-white">
+            <tr>
+              <th class="p-2.5 text-left">Ticket</th>
+              <th class="p-2.5 text-left">Fecha</th>
+              <th class="p-2.5 text-left">Tipo</th>
+              <th class="p-2.5 text-right">Subtotal</th>
+              <th class="p-2.5 text-right">IVA</th>
+              <th class="p-2.5 text-right">Total</th>
+            </tr>
+          </thead><tbody>`;
+        sales.forEach((s, i) => {
+          const bg = i % 2 === 0 ? 'bg-white' : 'bg-pink-50';
+          html += `<tr class="${bg} border-t border-gray-100">
+            <td class="p-2.5 font-medium">${s.ticket}</td>
+            <td class="p-2.5">${s.created_at.slice(0,10)}</td>
+            <td class="p-2.5">${s.order_type === 'Mesa' ? 'En Local' : 'Para Llevar'}</td>
+            <td class="p-2.5 text-right">${formatMoney(s.subtotal)}</td>
+            <td class="p-2.5 text-right">${formatMoney(s.tax)}</td>
+            <td class="p-2.5 text-right font-semibold text-green-600">${formatMoney(s.total)}</td>
+          </tr>`;
         });
-        html += '</tbody></table>';
-      } else html += '<p class="text-gray-400 text-sm">Sin ventas en el período</p>';
+        html += '</tbody></table></div>';
+      } else {
+        html += '<p class="text-gray-400 text-sm py-3">Sin ventas en el período</p>';
+      }
 
-      html += '<h4 class="font-bold mb-2 mt-6">Detalle de Gastos</h4>';
+      // ========== Detalle de Gastos (completo) ==========
+      html += '<h4 class="font-bold mb-2 mt-8 text-lg text-dulce-cafe">Detalle de Gastos</h4>';
       if (expenses.length) {
-        html += `<table class="w-full text-sm border"><thead class="bg-gray-100"><tr><th class="p-2 text-left">Fecha</th><th>Proveedor</th><th>Descripción</th><th class="text-right">Total</th></tr></thead><tbody>`;
-        expenses.forEach(e => {
-          html += `<tr class="border-t"><td class="p-2">${e.date || e.created_at.slice(0,10)}</td><td>${e.provider || '-'}</td><td>${e.description || '-'}</td><td class="text-right font-semibold text-red-600">${formatMoney(e.total)}</td></tr>`;
+        html += `<div class="overflow-x-auto"><table class="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+          <thead class="bg-red-600 text-white">
+            <tr>
+              <th class="p-2.5 text-left">Fecha</th>
+              <th class="p-2.5 text-left">Proveedor</th>
+              <th class="p-2.5 text-left">N° Factura</th>
+              <th class="p-2.5 text-left">Descripción</th>
+              <th class="p-2.5 text-center">Cant.</th>
+              <th class="p-2.5 text-left">Unidad</th>
+              <th class="p-2.5 text-right">P. Unit.</th>
+              <th class="p-2.5 text-center">IVA</th>
+              <th class="p-2.5 text-left">Categoría</th>
+              <th class="p-2.5 text-right">Total</th>
+            </tr>
+          </thead><tbody>`;
+        expenses.forEach((e, i) => {
+          const bg = i % 2 === 0 ? 'bg-white' : 'bg-red-50';
+          html += `<tr class="${bg} border-t border-gray-100">
+            <td class="p-2.5">${e.date || (e.created_at || '').slice(0,10)}</td>
+            <td class="p-2.5">${e.provider || '-'}</td>
+            <td class="p-2.5">${e.invoice_number || '-'}</td>
+            <td class="p-2.5">${e.description || '-'}</td>
+            <td class="p-2.5 text-center">${e.quantity ?? '-'}</td>
+            <td class="p-2.5">${e.unit || '-'}</td>
+            <td class="p-2.5 text-right">${e.unit_price != null ? formatMoney(e.unit_price) : '-'}</td>
+            <td class="p-2.5 text-center">${e.iva_rate != null ? e.iva_rate + '%' : '-'}</td>
+            <td class="p-2.5">${e.category || '-'}</td>
+            <td class="p-2.5 text-right font-semibold text-red-600">${formatMoney(e.total)}</td>
+          </tr>`;
         });
-        html += '</tbody></table>';
-      } else html += '<p class="text-gray-400 text-sm">Sin gastos en el período</p>';
+        html += '</tbody></table></div>';
+      } else {
+        html += '<p class="text-gray-400 text-sm py-3">Sin gastos en el período</p>';
+      }
 
       document.getElementById('reportDetail').innerHTML = html;
     }
 
     function exportExcel() {
-      if (!currentReport.sales && !currentReport.expenses) return alert('Genera el reporte primero');
+      if (!currentReport || (!currentReport.sales && !currentReport.expenses)) {
+        return alert('Genera el reporte primero');
+      }
+
       const wb = XLSX.utils.book_new();
+      const from = currentReport.from;
+      const to = currentReport.to;
+      const utilidad = currentReport.ingresos - currentReport.egresos;
 
-      // Resumen
+      // ===== HOJA 1: Resumen =====
       const resumen = [
-        ['REPORTE INGRESOS / EGRESOS - DULCE DÚO'],
-        ['Período', currentReport.from + ' a ' + currentReport.to],
+        ['DULCE DÚO — Reporte Contable'],
+        ['Período: ' + from + ' → ' + to],
+        ['Heladería Dulce Dúo'],
         [],
-        ['Concepto', 'Monto'],
-        ['Ingresos (Ventas)', currentReport.ingresos],
-        ['Egresos (Gastos)', currentReport.egresos],
-        ['Utilidad', currentReport.ingresos - currentReport.egresos],
+        ['Concepto', 'Valor', 'Cantidad'],
+        ['Ingresos (Ventas)', currentReport.ingresos, currentReport.sales.length],
+        ['Egresos (Gastos)', currentReport.egresos, currentReport.expenses.length],
+        ['Utilidad / Proyección', utilidad, ''],
         [],
-        ['Pedidos', currentReport.sales.length],
-        ['Registros de gastos', currentReport.expenses.length]
+        ['Ingresos', currentReport.ingresos],
+        ['Egresos', currentReport.egresos],
+        ['Utilidad', utilidad]
       ];
-      const ws1 = XLSX.utils.aoa_to_sheet(resumen);
-      XLSX.utils.book_append_sheet(wb, ws1, 'Resumen');
+      const wsResumen = XLSX.utils.aoa_to_sheet(resumen);
+      wsResumen['!cols'] = [{ wch: 28 }, { wch: 14 }, { wch: 12 }];
+      XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
 
-      // Ventas
-      const ventasData = [['Ticket', 'Fecha', 'Tipo', 'Subtotal', 'IVA', 'Total']];
+      // ===== HOJA 2: Pedidos (Ingresos) =====
+      const ventasData = [
+        ['Ticket', 'Fecha', 'Tipo de Orden', 'Subtotal', 'IVA (15%)', 'Total']
+      ];
       currentReport.sales.forEach(s => {
-        ventasData.push([s.ticket, s.created_at.slice(0,10), s.order_type, s.subtotal, s.tax, s.total]);
+        ventasData.push([
+          s.ticket,
+          s.created_at.slice(0, 10),
+          s.order_type === 'Mesa' ? 'En Local' : 'Para Llevar',
+          s.subtotal,
+          s.tax,
+          s.total
+        ]);
       });
-      const ws2 = XLSX.utils.aoa_to_sheet(ventasData);
-      XLSX.utils.book_append_sheet(wb, ws2, 'Ventas');
+      if (ventasData.length === 1) ventasData.push(['Sin ventas en el período', '', '', '', '', '']);
+      const wsVentas = XLSX.utils.aoa_to_sheet(ventasData);
+      wsVentas['!cols'] = [{ wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
+      XLSX.utils.book_append_sheet(wb, wsVentas, 'Pedidos (Ingresos)');
 
-      // Gastos
-      const gastosData = [['Fecha', 'Proveedor', 'Factura', 'Descripción', 'Cantidad', 'Unidad', 'P.Unit', 'IVA%', 'Total']];
+      // ===== HOJA 3: Gastos (Egresos) — completo =====
+      const gastosData = [
+        ['Fecha', 'Proveedor', 'N° Factura', 'Descripción', 'Cantidad', 'Unidad', 'Precio Unitario', 'IVA %', 'Categoría', 'Subtotal', 'IVA', 'Total']
+      ];
       currentReport.expenses.forEach(e => {
-        gastosData.push([e.date, e.provider, e.invoice_number, e.description, e.quantity, e.unit, e.unit_price, e.iva_rate, e.total]);
+        gastosData.push([
+          e.date || (e.created_at || '').slice(0, 10),
+          e.provider || '',
+          e.invoice_number || '',
+          e.description || '',
+          e.quantity ?? '',
+          e.unit || '',
+          e.unit_price ?? '',
+          e.iva_rate != null ? e.iva_rate : '',
+          e.category || '',
+          e.subtotal ?? '',
+          e.iva_amount ?? '',
+          e.total ?? ''
+        ]);
       });
-      const ws3 = XLSX.utils.aoa_to_sheet(gastosData);
-      XLSX.utils.book_append_sheet(wb, ws3, 'Gastos');
+      if (gastosData.length === 1) gastosData.push(['Sin gastos en el período', '', '', '', '', '', '', '', '', '', '', '']);
+      const wsGastos = XLSX.utils.aoa_to_sheet(gastosData);
+      wsGastos['!cols'] = [
+        { wch: 12 }, { wch: 18 }, { wch: 16 }, { wch: 28 },
+        { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 8 },
+        { wch: 18 }, { wch: 12 }, { wch: 10 }, { wch: 12 }
+      ];
+      XLSX.utils.book_append_sheet(wb, wsGastos, 'Gastos (Egresos)');
 
-      XLSX.writeFile(wb, `Reporte_DulceDuo_${currentReport.from}_${currentReport.to}.xlsx`);
+      // ===== HOJA 4: Productos vendidos =====
+      const prodCount = {};
+      currentReport.sales.forEach(s => {
+        (s.items || []).forEach(item => {
+          const key = item.name || item.product_id;
+          if (!prodCount[key]) {
+            prodCount[key] = { name: item.name, qty: 0, total: 0 };
+          }
+          prodCount[key].qty += item.qty || 0;
+          prodCount[key].total += item.subtotal || 0;
+        });
+      });
+      const prodData = [['Producto', 'Cantidad Vendida', 'Total Vendido ($)']];
+      Object.values(prodCount)
+        .sort((a, b) => b.qty - a.qty)
+        .forEach(p => prodData.push([p.name, p.qty, p.total]));
+      if (prodData.length === 1) prodData.push(['Sin productos vendidos', '', '']);
+      const wsProd = XLSX.utils.aoa_to_sheet(prodData);
+      wsProd['!cols'] = [{ wch: 35 }, { wch: 16 }, { wch: 16 }];
+      XLSX.utils.book_append_sheet(wb, wsProd, 'Productos vendidos');
+
+      // ===== HOJA 5: Por categoría (simplificado) =====
+      const catCount = {};
+      currentReport.sales.forEach(s => {
+        (s.items || []).forEach(item => {
+          // Intentar obtener categoría del producto
+          const p = getProductById(item.product_id);
+          const catName = p ? (getCategories().find(c => c.id === p.category)?.name || p.category) : 'Otros';
+          if (!catCount[catName]) catCount[catName] = { qty: 0, total: 0 };
+          catCount[catName].qty += item.qty || 0;
+          catCount[catName].total += item.subtotal || 0;
+        });
+      });
+      const catData = [['Categoría', 'Cantidad', 'Total ($)']];
+      Object.entries(catCount)
+        .sort((a, b) => b[1].total - a[1].total)
+        .forEach(([name, d]) => catData.push([name, d.qty, d.total]));
+      if (catData.length === 1) catData.push(['Sin datos', '', '']);
+      const wsCat = XLSX.utils.aoa_to_sheet(catData);
+      wsCat['!cols'] = [{ wch: 25 }, { wch: 12 }, { wch: 14 }];
+      XLSX.utils.book_append_sheet(wb, wsCat, 'Por categoría');
+
+      // Descargar
+      const filename = `DulceDuo_Reporte_${from}_${to}.xlsx`;
+      XLSX.writeFile(wb, filename);
     }
 
     function printReport() {
-      const content = document.getElementById('reportSummary').innerHTML + document.getElementById('reportDetail').innerHTML;
+      if (!currentReport) return alert('Genera el reporte primero');
+
+      const from = currentReport.from;
+      const to = currentReport.to;
+      const utilidad = currentReport.ingresos - currentReport.egresos;
+
+      // Construir tablas de detalle
+      let ventasRows = '';
+      currentReport.sales.forEach(s => {
+        ventasRows += `<tr>
+          <td>${s.ticket}</td>
+          <td>${s.created_at.slice(0,10)}</td>
+          <td>${s.order_type === 'Mesa' ? 'En Local' : 'Para Llevar'}</td>
+          <td class="right">${formatMoney(s.subtotal)}</td>
+          <td class="right">${formatMoney(s.tax)}</td>
+          <td class="right strong">${formatMoney(s.total)}</td>
+        </tr>`;
+      });
+      if (!ventasRows) ventasRows = '<tr><td colspan="6" class="center">Sin ventas en el período</td></tr>';
+
+      let gastosRows = '';
+      currentReport.expenses.forEach(e => {
+        gastosRows += `<tr>
+          <td>${e.date || (e.created_at || '').slice(0,10)}</td>
+          <td>${e.provider || '-'}</td>
+          <td>${e.invoice_number || '-'}</td>
+          <td>${e.description || '-'}</td>
+          <td class="center">${e.quantity ?? '-'}</td>
+          <td>${e.unit || '-'}</td>
+          <td class="right">${e.unit_price != null ? formatMoney(e.unit_price) : '-'}</td>
+          <td class="center">${e.iva_rate != null ? e.iva_rate + '%' : '-'}</td>
+          <td>${e.category || '-'}</td>
+          <td class="right strong red">${formatMoney(e.total)}</td>
+        </tr>`;
+      });
+      if (!gastosRows) gastosRows = '<tr><td colspan="10" class="center">Sin gastos en el período</td></tr>';
+
+      const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Reporte Dulce Dúo ${from} → ${to}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; color: #333; padding: 24px; font-size: 13px; }
+    .header { text-align: center; margin-bottom: 24px; border-bottom: 3px solid #E91E63; padding-bottom: 16px; }
+    .header h1 { color: #E91E63; font-size: 22px; margin-bottom: 4px; }
+    .header .sub { color: #666; font-size: 13px; }
+    .cards { display: flex; gap: 16px; margin: 20px 0; flex-wrap: wrap; }
+    .card { flex: 1; min-width: 160px; border-radius: 10px; padding: 14px 16px; color: white; }
+    .card.green { background: linear-gradient(135deg, #16a34a, #15803d); }
+    .card.red { background: linear-gradient(135deg, #dc2626, #b91c1c); }
+    .card.blue { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+    .card .label { font-size: 11px; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px; }
+    .card .value { font-size: 22px; font-weight: 700; margin-top: 4px; }
+    .card .meta { font-size: 11px; opacity: 0.85; margin-top: 2px; }
+    h2 { color: #6D3B1E; font-size: 16px; margin: 28px 0 10px; border-left: 4px solid #E91E63; padding-left: 10px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 12px; }
+    th { background: #E91E63; color: white; padding: 8px 10px; text-align: left; font-weight: 600; }
+    th.right, td.right { text-align: right; }
+    th.center, td.center { text-align: center; }
+    td { padding: 7px 10px; border-bottom: 1px solid #eee; }
+    tr:nth-child(even) td { background: #fdf2f8; }
+    .strong { font-weight: 700; }
+    .red { color: #dc2626; }
+    .footer { margin-top: 30px; text-align: center; font-size: 11px; color: #999; border-top: 1px solid #eee; padding-top: 12px; }
+    @media print {
+      body { padding: 12px; }
+      .card { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🍦 Dulce Dúo — Reporte Contable</h1>
+    <div class="sub">Heladería y algo más</div>
+    <div class="sub" style="margin-top:6px">Período: <strong>${from} → ${to}</strong></div>
+  </div>
+
+  <div class="cards">
+    <div class="card green">
+      <div class="label">Ingresos (Ventas)</div>
+      <div class="value">${formatMoney(currentReport.ingresos)}</div>
+      <div class="meta">${currentReport.sales.length} pedidos</div>
+    </div>
+    <div class="card red">
+      <div class="label">Egresos (Gastos)</div>
+      <div class="value">${formatMoney(currentReport.egresos)}</div>
+      <div class="meta">${currentReport.expenses.length} registros</div>
+    </div>
+    <div class="card blue">
+      <div class="label">Utilidad / Proyección</div>
+      <div class="value">${formatMoney(utilidad)}</div>
+      <div class="meta">${from} → ${to}</div>
+    </div>
+  </div>
+
+  <h2>Detalle de Ventas (Ingresos)</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Ticket</th><th>Fecha</th><th>Tipo</th>
+        <th class="right">Subtotal</th><th class="right">IVA</th><th class="right">Total</th>
+      </tr>
+    </thead>
+    <tbody>${ventasRows}</tbody>
+  </table>
+
+  <h2>Detalle de Gastos (Egresos)</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Fecha</th><th>Proveedor</th><th>N° Factura</th><th>Descripción</th>
+        <th class="center">Cant.</th><th>Unidad</th><th class="right">P. Unit.</th>
+        <th class="center">IVA</th><th>Categoría</th><th class="right">Total</th>
+      </tr>
+    </thead>
+    <tbody>${gastosRows}</tbody>
+  </table>
+
+  <div class="footer">
+    Generado el ${new Date().toLocaleString('es-EC')} · Dulce Dúo POS
+  </div>
+
+  <script>window.onload = function(){ window.print(); }<\/script>
+</body>
+</html>`;
+
       const w = window.open('', '_blank');
-      w.document.write(`
-        <html><head><title>Reporte Dulce Dúo</title>
-        <style>body{font-family:sans-serif;padding:20px} table{width:100%;border-collapse:collapse} th,td{border:1px solid #ddd;padding:8px;text-align:left} th{background:#f5f5f5}</style>
-        </head><body>
-        <h1>Dulce Dúo - Reporte Ingresos/Egresos</h1>
-        <p>Período: ${currentReport.from} → ${currentReport.to}</p>
-        ${content}
-        <script>window.print();<\/script>
-        </body></html>
-      `);
+      w.document.write(html);
       w.document.close();
     }
 
