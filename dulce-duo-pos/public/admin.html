@@ -358,21 +358,6 @@
           <tbody id="vhProductosBody"></tbody>
         </table>
       </div>
-
-      <h4 class="font-bold text-dulce-cafe mb-2">Tickets del día</h4>
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm border border-pink-100 rounded-xl overflow-hidden">
-          <thead class="bg-gray-700 text-white">
-            <tr>
-              <th class="p-2.5 text-left">Ticket</th>
-              <th class="p-2.5 text-left">Hora</th>
-              <th class="p-2.5 text-left">Forma de pago</th>
-              <th class="p-2.5 text-right">Total</th>
-            </tr>
-          </thead>
-          <tbody id="vhTicketsBody"></tbody>
-        </table>
-      </div>
     </div>
   </div>
 
@@ -509,22 +494,6 @@
         `).join('');
       }
 
-      const tickBody = document.getElementById('vhTicketsBody');
-      if (sales.length === 0) {
-        tickBody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-gray-400">Sin tickets hoy</td></tr>';
-      } else {
-        tickBody.innerHTML = sales.map(s => {
-          const hora = new Date(s.created_at).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' });
-          return `
-            <tr class="border-t border-gray-100 hover:bg-gray-50">
-              <td class="p-2.5 font-medium">${s.ticket}</td>
-              <td class="p-2.5">${hora}</td>
-              <td class="p-2.5">${labelPago(s.order_type)}</td>
-              <td class="p-2.5 text-right font-bold text-green-600">${formatMoney(s.total)}</td>
-            </tr>
-          `;
-        }).join('');
-      }
 
       document.getElementById('ventasHoyModal').classList.remove('hidden');
       document.getElementById('ventasHoyModal').classList.add('flex');
