@@ -186,20 +186,28 @@
           </button>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4" id="reportSummary">
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3" id="reportSummary">
           <div class="bg-green-50 rounded-xl p-4 text-center">
             <p class="text-xs text-green-700 font-semibold">Ingresos (Ventas)</p>
-            <p class="font-display text-2xl font-bold text-green-600" id="repIngresos">$0.00</p>
+            <p class="font-display text-xl font-bold text-green-600" id="repIngresos">$0.00</p>
             <p class="text-xs text-gray-500" id="repPedidos">0 pedidos</p>
+          </div>
+          <div class="bg-emerald-50 rounded-xl p-4 text-center">
+            <p class="text-xs text-emerald-700 font-semibold">Efectivo</p>
+            <p class="font-display text-xl font-bold text-emerald-600" id="repEfectivo">$0.00</p>
+          </div>
+          <div class="bg-sky-50 rounded-xl p-4 text-center">
+            <p class="text-xs text-sky-700 font-semibold">Transferencia</p>
+            <p class="font-display text-xl font-bold text-sky-600" id="repTransfer">$0.00</p>
           </div>
           <div class="bg-red-50 rounded-xl p-4 text-center">
             <p class="text-xs text-red-700 font-semibold">Egresos (Gastos)</p>
-            <p class="font-display text-2xl font-bold text-red-600" id="repEgresos">$0.00</p>
+            <p class="font-display text-xl font-bold text-red-600" id="repEgresos">$0.00</p>
             <p class="text-xs text-gray-500" id="repGastos">0 registros</p>
           </div>
           <div class="bg-blue-50 rounded-xl p-4 text-center">
-            <p class="text-xs text-blue-700 font-semibold">Utilidad / Proyección</p>
-            <p class="font-display text-2xl font-bold text-blue-600" id="repUtilidad">$0.00</p>
+            <p class="text-xs text-blue-700 font-semibold">Utilidad</p>
+            <p class="font-display text-xl font-bold text-blue-600" id="repUtilidad">$0.00</p>
             <p class="text-xs text-gray-500" id="repPeriod"></p>
           </div>
         </div>
@@ -314,18 +322,26 @@
         </button>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+      <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-5">
         <div class="bg-green-50 rounded-2xl p-4 border border-green-100">
           <p class="text-xs font-semibold text-green-700 uppercase">Total vendido</p>
           <p class="font-display text-2xl font-bold text-green-600" id="vhTotal">$0.00</p>
         </div>
+        <div class="bg-emerald-50 rounded-2xl p-4 border border-emerald-100">
+          <p class="text-xs font-semibold text-emerald-700 uppercase">Efectivo</p>
+          <p class="font-display text-xl font-bold text-emerald-600" id="vhEfectivo">$0.00</p>
+        </div>
+        <div class="bg-sky-50 rounded-2xl p-4 border border-sky-100">
+          <p class="text-xs font-semibold text-sky-700 uppercase">Transferencia</p>
+          <p class="font-display text-xl font-bold text-sky-600" id="vhTransfer">$0.00</p>
+        </div>
         <div class="bg-pink-50 rounded-2xl p-4 border border-pink-100">
           <p class="text-xs font-semibold text-dulce-fucsia uppercase">Pedidos</p>
-          <p class="font-display text-2xl font-bold text-dulce-fucsia" id="vhPedidos">0</p>
+          <p class="font-display text-xl font-bold text-dulce-fucsia" id="vhPedidos">0</p>
         </div>
         <div class="bg-amber-50 rounded-2xl p-4 border border-amber-100">
-          <p class="text-xs font-semibold text-amber-700 uppercase">Productos vendidos</p>
-          <p class="font-display text-2xl font-bold text-amber-600" id="vhItems">0</p>
+          <p class="text-xs font-semibold text-amber-700 uppercase">Productos</p>
+          <p class="font-display text-xl font-bold text-amber-600" id="vhItems">0</p>
         </div>
       </div>
 
@@ -350,7 +366,7 @@
             <tr>
               <th class="p-2.5 text-left">Ticket</th>
               <th class="p-2.5 text-left">Hora</th>
-              <th class="p-2.5 text-left">Tipo</th>
+              <th class="p-2.5 text-left">Forma de pago</th>
               <th class="p-2.5 text-right">Total</th>
             </tr>
           </thead>
@@ -445,10 +461,20 @@
 
     // ==================== DASHBOARD ====================
     let chartInstance = null;
+    function isEfectivo(orderType) {
+      return orderType === 'Efectivo' || orderType === 'Mesa' || orderType === 'En Local';
+    }
+
+    function labelPago(orderType) {
+      return isEfectivo(orderType) ? 'Efectivo' : 'Transferencia';
+    }
+
     function openVentasHoy() {
       const today = getToday();
       const sales = getTodaySales();
       const total = sales.reduce((s, x) => s + x.total, 0);
+      const totalEfectivo = sales.filter(s => isEfectivo(s.order_type)).reduce((s, x) => s + x.total, 0);
+      const totalTransfer = sales.filter(s => !isEfectivo(s.order_type)).reduce((s, x) => s + x.total, 0);
       let itemsCount = 0;
       const prodMap = {};
 
@@ -464,6 +490,8 @@
 
       document.getElementById('ventasHoyFecha').textContent = new Date().toLocaleDateString('es-EC', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
       document.getElementById('vhTotal').textContent = formatMoney(total);
+      document.getElementById('vhEfectivo').textContent = formatMoney(totalEfectivo);
+      document.getElementById('vhTransfer').textContent = formatMoney(totalTransfer);
       document.getElementById('vhPedidos').textContent = sales.length;
       document.getElementById('vhItems').textContent = itemsCount;
 
@@ -491,7 +519,7 @@
             <tr class="border-t border-gray-100 hover:bg-gray-50">
               <td class="p-2.5 font-medium">${s.ticket}</td>
               <td class="p-2.5">${hora}</td>
-              <td class="p-2.5">${s.order_type === 'Mesa' ? 'En Local' : 'Para Llevar'}</td>
+              <td class="p-2.5">${labelPago(s.order_type)}</td>
               <td class="p-2.5 text-right font-bold text-green-600">${formatMoney(s.total)}</td>
             </tr>
           `;
@@ -729,12 +757,20 @@
 
       currentReport = { from, to, sales, expenses, ingresos, egresos };
 
+      const efectivo = sales.filter(s => isEfectivo(s.order_type)).reduce((s, x) => s + x.total, 0);
+      const transfer = sales.filter(s => !isEfectivo(s.order_type)).reduce((s, x) => s + x.total, 0);
+
       document.getElementById('repIngresos').textContent = formatMoney(ingresos);
       document.getElementById('repPedidos').textContent = sales.length + ' pedidos';
+      document.getElementById('repEfectivo').textContent = formatMoney(efectivo);
+      document.getElementById('repTransfer').textContent = formatMoney(transfer);
       document.getElementById('repEgresos').textContent = formatMoney(egresos);
       document.getElementById('repGastos').textContent = expenses.length + ' registros';
       document.getElementById('repUtilidad').textContent = formatMoney(ingresos - egresos);
       document.getElementById('repPeriod').textContent = from + ' → ' + to;
+
+      currentReport.efectivo = efectivo;
+      currentReport.transfer = transfer;
 
       // ========== Detalle de Ventas ==========
       let html = '<h4 class="font-bold mb-2 mt-4 text-lg text-dulce-cafe">Detalle de Ventas</h4>';
@@ -755,7 +791,7 @@
           html += `<tr class="${bg} border-t border-gray-100">
             <td class="p-2.5 font-medium">${s.ticket}</td>
             <td class="p-2.5">${s.created_at.slice(0,10)}</td>
-            <td class="p-2.5">${s.order_type === 'Mesa' ? 'En Local' : 'Para Llevar'}</td>
+            <td class="p-2.5">${labelPago(s.order_type)}</td>
             <td class="p-2.5 text-right">${formatMoney(s.subtotal)}</td>
             <td class="p-2.5 text-right">${formatMoney(s.tax)}</td>
             <td class="p-2.5 text-right font-semibold text-green-600">${formatMoney(s.total)}</td>
@@ -988,43 +1024,62 @@
       styleHeader(ws1.getRow(5), PINK);
 
       const r6 = ws1.getRow(6);
+      const efectivoR = +(currentReport.efectivo || 0).toFixed(2);
+      const transferR = +(currentReport.transfer || 0).toFixed(2);
+
       r6.values = ['Ingresos (Ventas)', ingresos, currentReport.sales.length];
       styleDataRow(r6, GREEN_LIGHT);
       r6.getCell(2).font = { bold: true, color: { argb: GREEN } };
       r6.getCell(2).numFmt = '"$"#,##0.00';
 
-      const r7 = ws1.getRow(7);
+      const r6b = ws1.getRow(7);
+      r6b.values = ['  → Efectivo', efectivoR, ''];
+      styleDataRow(r6b, 'FFECFDF5');
+      r6b.getCell(2).numFmt = '"$"#,##0.00';
+      r6b.getCell(1).font = { color: { argb: 'FF059669' } };
+
+      const r6c = ws1.getRow(8);
+      r6c.values = ['  → Transferencia', transferR, ''];
+      styleDataRow(r6c, 'FFF0F9FF');
+      r6c.getCell(2).numFmt = '"$"#,##0.00';
+      r6c.getCell(1).font = { color: { argb: 'FF0284C7' } };
+
+      const r7 = ws1.getRow(9);
       r7.values = ['Egresos (Gastos)', egresos, currentReport.expenses.length];
       styleDataRow(r7, RED_LIGHT);
       r7.getCell(2).font = { bold: true, color: { argb: RED } };
       r7.getCell(2).numFmt = '"$"#,##0.00';
 
-      const r8 = ws1.getRow(8);
+      const r8 = ws1.getRow(10);
       r8.values = ['Utilidad / Proyección', utilidad, ''];
       styleDataRow(r8, BLUE_LIGHT);
       r8.getCell(2).font = { bold: true, color: { argb: BLUE }, size: 12 };
       r8.getCell(2).numFmt = '"$"#,##0.00';
 
-      ws1.getRow(10).values = ['Resumen rápido'];
-      ws1.getCell('A10').font = { bold: true, size: 12, color: { argb: DARK } };
-      ws1.getRow(11).values = ['Ingresos', ingresos];
-      ws1.getCell('B11').numFmt = '"$"#,##0.00';
-      ws1.getCell('B11').font = { bold: true, color: { argb: GREEN } };
-      ws1.getRow(12).values = ['Egresos', egresos];
-      ws1.getCell('B12').numFmt = '"$"#,##0.00';
-      ws1.getCell('B12').font = { bold: true, color: { argb: RED } };
-      ws1.getRow(13).values = ['Utilidad', utilidad];
+      ws1.getRow(12).values = ['Resumen rápido'];
+      ws1.getCell('A12').font = { bold: true, size: 12, color: { argb: DARK } };
+      ws1.getRow(13).values = ['Ingresos', ingresos];
       ws1.getCell('B13').numFmt = '"$"#,##0.00';
-      ws1.getCell('B13').font = { bold: true, color: { argb: BLUE } };
+      ws1.getCell('B13').font = { bold: true, color: { argb: GREEN } };
+      ws1.getRow(14).values = ['  Efectivo', efectivoR];
+      ws1.getCell('B14').numFmt = '"$"#,##0.00';
+      ws1.getRow(15).values = ['  Transferencia', transferR];
+      ws1.getCell('B15').numFmt = '"$"#,##0.00';
+      ws1.getRow(16).values = ['Egresos', egresos];
+      ws1.getCell('B16').numFmt = '"$"#,##0.00';
+      ws1.getCell('B16').font = { bold: true, color: { argb: RED } };
+      ws1.getRow(17).values = ['Utilidad', utilidad];
+      ws1.getCell('B17').numFmt = '"$"#,##0.00';
+      ws1.getCell('B17').font = { bold: true, color: { argb: BLUE } };
 
-      ws1.getRow(15).values = ['Gráfico: Ingresos vs Egresos vs Utilidad'];
-      ws1.getCell('A15').font = { bold: true, size: 11, color: { argb: DARK } };
-      await addChartImage(ws1, imgResumen, 0, 15.5, 460, 250);
+      ws1.getRow(19).values = ['Gráfico: Ingresos vs Egresos vs Utilidad'];
+      ws1.getCell('A19').font = { bold: true, size: 11, color: { argb: DARK } };
+      await addChartImage(ws1, imgResumen, 0, 19.5, 460, 250);
 
-      ws1.getRow(32).values = ['Nota: Los valores están en dólares estadounidenses (USD).'];
-      ws1.getCell('A32').font = { size: 9, italic: true, color: { argb: GRAY } };
-      ws1.getRow(33).values = ['Generado el: ' + new Date().toLocaleString('es-EC')];
-      ws1.getCell('A33').font = { size: 9, color: { argb: GRAY } };
+      ws1.getRow(36).values = ['Nota: Los valores están en dólares estadounidenses (USD).'];
+      ws1.getCell('A36').font = { size: 9, italic: true, color: { argb: GRAY } };
+      ws1.getRow(37).values = ['Generado el: ' + new Date().toLocaleString('es-EC')];
+      ws1.getCell('A37').font = { size: 9, color: { argb: GRAY } };
 
       // ========== HOJA 2: PEDIDOS ==========
       const ws2 = wb.addWorksheet('Pedidos (Ingresos)', { views: [{ showGridLines: false }] });
@@ -1038,14 +1093,14 @@
       ws2.getRow(2).values = ['Período: ' + from + ' → ' + to];
       ws2.getCell('A2').font = { size: 10, color: { argb: GRAY } };
 
-      ws2.getRow(4).values = ['Ticket', 'Fecha', 'Tipo de Orden', 'Subtotal ($)', 'IVA 15% ($)', 'Total ($)'];
+      ws2.getRow(4).values = ['Ticket', 'Fecha', 'Forma de pago', 'Subtotal ($)', 'IVA 15% ($)', 'Total ($)'];
       styleHeader(ws2.getRow(4), GREEN);
 
       currentReport.sales.forEach((s, i) => {
         const row = ws2.getRow(5 + i);
         row.values = [
           s.ticket, s.created_at.slice(0, 10),
-          s.order_type === 'Mesa' ? 'En Local' : 'Para Llevar',
+          isEfectivo(s.order_type) ? 'Efectivo' : 'Transferencia',
           money(s.subtotal), money(s.tax), money(s.total)
         ];
         styleDataRow(row, i % 2 === 0 ? WHITE : GREEN_LIGHT);
@@ -1265,7 +1320,7 @@
           ventasRows += `<tr>
             <td>${s.ticket}</td>
             <td>${s.created_at.slice(0,10)}</td>
-            <td>${s.order_type === 'Mesa' ? 'En Local' : 'Para Llevar'}</td>
+            <td>${labelPago(s.order_type)}</td>
             <td class="right">${formatMoney(s.subtotal)}</td>
             <td class="right">${formatMoney(s.tax)}</td>
             <td class="right strong">${formatMoney(s.total)}</td>
@@ -1356,13 +1411,21 @@
       <div class="value">${formatMoney(currentReport.ingresos)}</div>
       <div class="meta">${currentReport.sales.length} pedidos</div>
     </div>
+    <div class="card green" style="background:linear-gradient(135deg,#059669,#047857)">
+      <div class="label">Efectivo</div>
+      <div class="value">${formatMoney(currentReport.efectivo||0)}</div>
+    </div>
+    <div class="card" style="background:linear-gradient(135deg,#0284c7,#0369a1);color:#fff">
+      <div class="label">Transferencia</div>
+      <div class="value">${formatMoney(currentReport.transfer||0)}</div>
+    </div>
     <div class="card red">
       <div class="label">Egresos (Gastos)</div>
       <div class="value">${formatMoney(currentReport.egresos)}</div>
       <div class="meta">${currentReport.expenses.length} registros</div>
     </div>
     <div class="card blue">
-      <div class="label">Utilidad / Proyección</div>
+      <div class="label">Utilidad</div>
       <div class="value">${formatMoney(utilidad)}</div>
       <div class="meta">${from} → ${to}</div>
     </div>
