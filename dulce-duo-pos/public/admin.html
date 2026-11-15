@@ -9,6 +9,8 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
   <script>
     tailwind.config = {
       theme: {
@@ -805,101 +807,229 @@
       document.getElementById('reportDetail').innerHTML = html;
     }
 
-    function exportExcel() {
+    async function exportExcel() {
       if (!currentReport || (!currentReport.sales && !currentReport.expenses)) {
         return alert('Genera el reporte primero');
       }
 
-      const wb = XLSX.utils.book_new();
       const from = currentReport.from;
       const to = currentReport.to;
-      const utilidad = +(currentReport.ingresos - currentReport.egresos).toFixed(2);
-      const ingresos = +currentReport.ingresos.toFixed(2);
-      const egresos = +currentReport.egresos.toFixed(2);
+      const ingresos = +Number(currentReport.ingresos).toFixed(2);
+      const egresos = +Number(currentReport.egresos).toFixed(2);
+      const utilidad = +(ingresos - egresos).toFixed(2);
 
-      // ===== HOJA 1: Resumen =====
-      const resumen = [
-        ['DULCE DÚO — Reporte Contable'],
-        ['Período: ' + from + ' → ' + to],
-        ['Heladería Dulce Dúo'],
-        [],
-        ['Concepto', 'Valor ($)', 'Cantidad'],
-        ['Ingresos (Ventas)', ingresos, currentReport.sales.length],
-        ['Egresos (Gastos)', egresos, currentReport.expenses.length],
-        ['Utilidad / Proyección', utilidad, ''],
-        [],
-        ['Ingresos', ingresos],
-        ['Egresos', egresos],
-        ['Utilidad', utilidad],
-        [],
-        ['Nota: Los valores están en dólares estadounidenses (USD).'],
-        ['Generado el: ' + new Date().toLocaleString('es-EC')]
-      ];
-      const wsResumen = XLSX.utils.aoa_to_sheet(resumen);
-      wsResumen['!cols'] = [{ wch: 30 }, { wch: 14 }, { wch: 12 }];
-      // Anchos y estilo básico de título
-      if (!wsResumen['!merges']) wsResumen['!merges'] = [];
-      wsResumen['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } });
-      XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
+      const wb = new ExcelJS.Workbook();
+      wb.creator = 'Dulce Dúo POS';
+      wb.created = new Date();
 
-      // ===== HOJA 2: Pedidos (Ingresos) =====
-      const ventasData = [
-        ['Ticket', 'Fecha', 'Tipo de Orden', 'Subtotal ($)', 'IVA 15% ($)', 'Total ($)']
+      // Colores de marca
+      const PINK = 'FFE91E63';
+      const PINK_LIGHT = 'FFFCE4EC';
+      const GREEN = 'FF16A34A';
+      const GREEN_LIGHT = 'FFDCFCE7';
+      const RED = 'FFDC2626';
+      const RED_LIGHT = 'FFFEE2E2';
+      const BLUE = 'FF2563EB';
+      const BLUE_LIGHT = 'FFDBEAFE';
+      const GRAY = 'FF6B7280';
+      const WHITE = 'FFFFFFFF';
+      const DARK = 'FF1F2937';
+
+      function styleHeader(row, color) {
+        row.eachCell(cell => {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: color } };
+          cell.font = { bold: true, color: { argb: WHITE }, size: 11 };
+          cell.alignment = { vertical: 'middle', horizontal: 'center' };
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            right: { style: 'thin', color: { argb: 'FFD1D5DB' } }
+          };
+        });
+        row.height = 22;
+      }
+
+      function styleDataRow(row, lightColor) {
+        row.eachCell(cell => {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: lightColor } };
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+            left: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+            bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+            right: { style: 'thin', color: { argb: 'FFE5E7EB' } }
+          };
+          cell.alignment = { vertical: 'middle' };
+        });
+      }
+
+      function money(n) {
+        return Number(n || 0);
+      }
+
+      // ========== HOJA 1: RESUMEN ==========
+      const ws1 = wb.addWorksheet('Resumen', { views: [{ showGridLines: false }] });
+      ws1.columns = [
+        { width: 32 }, { width: 16 }, { width: 14 }, { width: 18 }, { width: 14 }
       ];
-      currentReport.sales.forEach(s => {
-        ventasData.push([
+
+      // Título
+      ws1.mergeCells('A1:C1');
+      ws1.getCell('A1').value = '🍦 DULCE DÚO — Reporte Contable';
+      ws1.getCell('A1').font = { bold: true, size: 18, color: { argb: PINK } };
+      ws1.getCell('A1').alignment = { horizontal: 'left', vertical: 'middle' };
+      ws1.getRow(1).height = 30;
+
+      ws1.mergeCells('A2:C2');
+      ws1.getCell('A2').value = 'Período: ' + from + '  →  ' + to;
+      ws1.getCell('A2').font = { size: 12, color: { argb: GRAY } };
+
+      ws1.mergeCells('A3:C3');
+      ws1.getCell('A3').value = 'Heladería Dulce Dúo';
+      ws1.getCell('A3').font = { size: 11, italic: true, color: { argb: GRAY } };
+
+      // Tabla resumen
+      ws1.getRow(5).values = ['Concepto', 'Valor ($)', 'Cantidad'];
+      styleHeader(ws1.getRow(5), PINK);
+
+      const r6 = ws1.getRow(6);
+      r6.values = ['Ingresos (Ventas)', ingresos, currentReport.sales.length];
+      styleDataRow(r6, GREEN_LIGHT);
+      r6.getCell(2).font = { bold: true, color: { argb: GREEN } };
+      r6.getCell(2).numFmt = '"$"#,##0.00';
+
+      const r7 = ws1.getRow(7);
+      r7.values = ['Egresos (Gastos)', egresos, currentReport.expenses.length];
+      styleDataRow(r7, RED_LIGHT);
+      r7.getCell(2).font = { bold: true, color: { argb: RED } };
+      r7.getCell(2).numFmt = '"$"#,##0.00';
+
+      const r8 = ws1.getRow(8);
+      r8.values = ['Utilidad / Proyección', utilidad, ''];
+      styleDataRow(r8, BLUE_LIGHT);
+      r8.getCell(2).font = { bold: true, color: { argb: BLUE }, size: 12 };
+      r8.getCell(2).numFmt = '"$"#,##0.00';
+
+      // Bloque resumen rápido
+      ws1.getRow(10).values = ['Resumen rápido'];
+      ws1.getCell('A10').font = { bold: true, size: 12, color: { argb: DARK } };
+
+      ws1.getRow(11).values = ['Ingresos', ingresos];
+      ws1.getCell('B11').numFmt = '"$"#,##0.00';
+      ws1.getCell('B11').font = { bold: true, color: { argb: GREEN } };
+
+      ws1.getRow(12).values = ['Egresos', egresos];
+      ws1.getCell('B12').numFmt = '"$"#,##0.00';
+      ws1.getCell('B12').font = { bold: true, color: { argb: RED } };
+
+      ws1.getRow(13).values = ['Utilidad', utilidad];
+      ws1.getCell('B13').numFmt = '"$"#,##0.00';
+      ws1.getCell('B13').font = { bold: true, color: { argb: BLUE } };
+
+      ws1.getRow(15).values = ['Nota: Los valores están en dólares estadounidenses (USD).'];
+      ws1.getCell('A15').font = { size: 9, italic: true, color: { argb: GRAY } };
+      ws1.getRow(16).values = ['Generado el: ' + new Date().toLocaleString('es-EC')];
+      ws1.getCell('A16').font = { size: 9, color: { argb: GRAY } };
+
+      // ========== HOJA 2: PEDIDOS (INGRESOS) ==========
+      const ws2 = wb.addWorksheet('Pedidos (Ingresos)', { views: [{ showGridLines: false }] });
+      ws2.columns = [
+        { width: 12 }, { width: 12 }, { width: 14 }, { width: 13 }, { width: 13 }, { width: 12 }
+      ];
+
+      ws2.mergeCells('A1:F1');
+      ws2.getCell('A1').value = 'Pedidos / Ingresos — Dulce Dúo';
+      ws2.getCell('A1').font = { bold: true, size: 16, color: { argb: GREEN } };
+      ws2.getRow(1).height = 26;
+
+      ws2.getRow(2).values = ['Período: ' + from + ' → ' + to];
+      ws2.getCell('A2').font = { size: 10, color: { argb: GRAY } };
+
+      ws2.getRow(4).values = ['Ticket', 'Fecha', 'Tipo de Orden', 'Subtotal ($)', 'IVA 15% ($)', 'Total ($)'];
+      styleHeader(ws2.getRow(4), GREEN);
+
+      currentReport.sales.forEach((s, i) => {
+        const row = ws2.getRow(5 + i);
+        row.values = [
           s.ticket,
           s.created_at.slice(0, 10),
           s.order_type === 'Mesa' ? 'En Local' : 'Para Llevar',
-          +Number(s.subtotal).toFixed(2),
-          +Number(s.tax).toFixed(2),
-          +Number(s.total).toFixed(2)
-        ]);
+          money(s.subtotal),
+          money(s.tax),
+          money(s.total)
+        ];
+        styleDataRow(row, i % 2 === 0 ? 'FFFFFFFF' : GREEN_LIGHT);
+        row.getCell(4).numFmt = '"$"#,##0.00';
+        row.getCell(5).numFmt = '"$"#,##0.00';
+        row.getCell(6).numFmt = '"$"#,##0.00';
+        row.getCell(6).font = { bold: true, color: { argb: GREEN } };
       });
-      if (ventasData.length === 1) ventasData.push(['Sin ventas en el período', '', '', '', '', '']);
-      // Totales
-      ventasData.push([]);
-      ventasData.push(['TOTALES', '', '', 
-        +currentReport.sales.reduce((a,s)=>a+s.subtotal,0).toFixed(2),
-        +currentReport.sales.reduce((a,s)=>a+s.tax,0).toFixed(2),
-        ingresos
-      ]);
-      const wsVentas = XLSX.utils.aoa_to_sheet(ventasData);
-      wsVentas['!cols'] = [{ wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 13 }, { wch: 13 }, { wch: 12 }];
-      XLSX.utils.book_append_sheet(wb, wsVentas, 'Pedidos (Ingresos)');
 
-      // ===== HOJA 3: Gastos (Egresos) — completo =====
-      const gastosData = [
-        ['Fecha', 'Proveedor', 'N° Factura', 'Descripción', 'Cantidad', 'Unidad', 'Precio Unit. ($)', 'IVA %', 'Categoría', 'Subtotal ($)', 'IVA ($)', 'Total ($)']
+      const totalRowIdx = 5 + currentReport.sales.length + 1;
+      const totalRow = ws2.getRow(totalRowIdx);
+      totalRow.values = [
+        'TOTALES', '', '',
+        money(currentReport.sales.reduce((a, s) => a + s.subtotal, 0)),
+        money(currentReport.sales.reduce((a, s) => a + s.tax, 0)),
+        ingresos
       ];
-      currentReport.expenses.forEach(e => {
-        gastosData.push([
+      styleHeader(totalRow, GREEN);
+      totalRow.getCell(4).numFmt = '"$"#,##0.00';
+      totalRow.getCell(5).numFmt = '"$"#,##0.00';
+      totalRow.getCell(6).numFmt = '"$"#,##0.00';
+
+      // ========== HOJA 3: GASTOS (EGRESOS) ==========
+      const ws3 = wb.addWorksheet('Gastos (Egresos)', { views: [{ showGridLines: false }] });
+      ws3.columns = [
+        { width: 12 }, { width: 18 }, { width: 16 }, { width: 26 },
+        { width: 10 }, { width: 10 }, { width: 14 }, { width: 8 },
+        { width: 18 }, { width: 12 }, { width: 10 }, { width: 12 }
+      ];
+
+      ws3.mergeCells('A1:L1');
+      ws3.getCell('A1').value = 'Gastos / Egresos — Dulce Dúo';
+      ws3.getCell('A1').font = { bold: true, size: 16, color: { argb: RED } };
+      ws3.getRow(1).height = 26;
+
+      ws3.getRow(2).values = ['Período: ' + from + ' → ' + to];
+      ws3.getCell('A2').font = { size: 10, color: { argb: GRAY } };
+
+      ws3.getRow(4).values = [
+        'Fecha', 'Proveedor', 'N° Factura', 'Descripción', 'Cantidad', 'Unidad',
+        'P. Unit. ($)', 'IVA %', 'Categoría', 'Subtotal ($)', 'IVA ($)', 'Total ($)'
+      ];
+      styleHeader(ws3.getRow(4), RED);
+
+      currentReport.expenses.forEach((e, i) => {
+        const row = ws3.getRow(5 + i);
+        row.values = [
           e.date || (e.created_at || '').slice(0, 10),
           e.provider || '',
           e.invoice_number || '',
           e.description || '',
           e.quantity ?? '',
           e.unit || '',
-          e.unit_price != null ? +Number(e.unit_price).toFixed(2) : '',
+          e.unit_price != null ? money(e.unit_price) : '',
           e.iva_rate != null ? e.iva_rate : '',
           e.category || '',
-          e.subtotal != null ? +Number(e.subtotal).toFixed(2) : '',
-          e.iva_amount != null ? +Number(e.iva_amount).toFixed(2) : '',
-          e.total != null ? +Number(e.total).toFixed(2) : ''
-        ]);
+          e.subtotal != null ? money(e.subtotal) : '',
+          e.iva_amount != null ? money(e.iva_amount) : '',
+          e.total != null ? money(e.total) : ''
+        ];
+        styleDataRow(row, i % 2 === 0 ? 'FFFFFFFF' : RED_LIGHT);
+        [7, 10, 11, 12].forEach(c => {
+          if (row.getCell(c).value !== '') row.getCell(c).numFmt = '"$"#,##0.00';
+        });
+        row.getCell(12).font = { bold: true, color: { argb: RED } };
       });
-      if (gastosData.length === 1) gastosData.push(['Sin gastos en el período', '', '', '', '', '', '', '', '', '', '', '']);
-      gastosData.push([]);
-      gastosData.push(['TOTAL EGRESOS', '', '', '', '', '', '', '', '', '', '', egresos]);
-      const wsGastos = XLSX.utils.aoa_to_sheet(gastosData);
-      wsGastos['!cols'] = [
-        { wch: 12 }, { wch: 18 }, { wch: 16 }, { wch: 28 },
-        { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 8 },
-        { wch: 18 }, { wch: 12 }, { wch: 10 }, { wch: 12 }
-      ];
-      XLSX.utils.book_append_sheet(wb, wsGastos, 'Gastos (Egresos)');
 
-      // ===== HOJA 4: Productos vendidos =====
+      const gTotalIdx = 5 + currentReport.expenses.length + 1;
+      const gTotal = ws3.getRow(gTotalIdx);
+      gTotal.values = ['TOTAL EGRESOS', '', '', '', '', '', '', '', '', '', '', egresos];
+      styleHeader(gTotal, RED);
+      gTotal.getCell(12).numFmt = '"$"#,##0.00';
+
+      // ========== HOJA 4: PRODUCTOS VENDIDOS ==========
       const prodCount = {};
       currentReport.sales.forEach(s => {
         (s.items || []).forEach(item => {
@@ -909,16 +1039,32 @@
           prodCount[key].total += item.subtotal || 0;
         });
       });
-      const prodData = [['#', 'Producto', 'Cantidad Vendida', 'Total Vendido ($)']];
-      Object.values(prodCount)
-        .sort((a, b) => b.qty - a.qty)
-        .forEach((p, i) => prodData.push([i + 1, p.name, p.qty, +p.total.toFixed(2)]));
-      if (prodData.length === 1) prodData.push(['', 'Sin productos vendidos', '', '']);
-      const wsProd = XLSX.utils.aoa_to_sheet(prodData);
-      wsProd['!cols'] = [{ wch: 5 }, { wch: 35 }, { wch: 16 }, { wch: 16 }];
-      XLSX.utils.book_append_sheet(wb, wsProd, 'Productos vendidos');
+      const prods = Object.values(prodCount).sort((a, b) => b.qty - a.qty);
 
-      // ===== HOJA 5: Por categoría =====
+      const ws4 = wb.addWorksheet('Productos vendidos', { views: [{ showGridLines: false }] });
+      ws4.columns = [{ width: 6 }, { width: 36 }, { width: 16 }, { width: 16 }];
+
+      ws4.mergeCells('A1:D1');
+      ws4.getCell('A1').value = 'Productos más vendidos — Dulce Dúo';
+      ws4.getCell('A1').font = { bold: true, size: 16, color: { argb: PINK } };
+      ws4.getRow(1).height = 26;
+
+      ws4.getRow(3).values = ['#', 'Producto', 'Cantidad', 'Total ($)'];
+      styleHeader(ws4.getRow(3), PINK);
+
+      prods.forEach((p, i) => {
+        const row = ws4.getRow(4 + i);
+        row.values = [i + 1, p.name, p.qty, money(p.total)];
+        styleDataRow(row, i % 2 === 0 ? 'FFFFFFFF' : PINK_LIGHT);
+        row.getCell(4).numFmt = '"$"#,##0.00';
+        row.getCell(4).font = { bold: true, color: { argb: PINK } };
+      });
+
+      if (prods.length === 0) {
+        ws4.getRow(4).values = ['', 'Sin productos vendidos en el período', '', ''];
+      }
+
+      // ========== HOJA 5: POR CATEGORÍA ==========
       const catCount = {};
       currentReport.sales.forEach(s => {
         (s.items || []).forEach(item => {
@@ -929,16 +1075,35 @@
           catCount[catName].total += item.subtotal || 0;
         });
       });
-      const catData = [['Categoría', 'Cantidad', 'Total ($)']];
-      Object.entries(catCount)
-        .sort((a, b) => b[1].total - a[1].total)
-        .forEach(([name, d]) => catData.push([name, d.qty, +d.total.toFixed(2)]));
-      if (catData.length === 1) catData.push(['Sin datos', '', '']);
-      const wsCat = XLSX.utils.aoa_to_sheet(catData);
-      wsCat['!cols'] = [{ wch: 28 }, { wch: 12 }, { wch: 14 }];
-      XLSX.utils.book_append_sheet(wb, wsCat, 'Por categoría');
+      const cats = Object.entries(catCount).sort((a, b) => b[1].total - a[1].total);
 
-      XLSX.writeFile(wb, `DulceDuo_Reporte_${from}_${to}.xlsx`);
+      const ws5 = wb.addWorksheet('Por categoría', { views: [{ showGridLines: false }] });
+      ws5.columns = [{ width: 28 }, { width: 12 }, { width: 14 }];
+
+      ws5.mergeCells('A1:C1');
+      ws5.getCell('A1').value = 'Ventas por categoría — Dulce Dúo';
+      ws5.getCell('A1').font = { bold: true, size: 16, color: { argb: BLUE } };
+      ws5.getRow(1).height = 26;
+
+      ws5.getRow(3).values = ['Categoría', 'Cantidad', 'Total ($)'];
+      styleHeader(ws5.getRow(3), BLUE);
+
+      cats.forEach(([name, d], i) => {
+        const row = ws5.getRow(4 + i);
+        row.values = [name, d.qty, money(d.total)];
+        styleDataRow(row, i % 2 === 0 ? 'FFFFFFFF' : BLUE_LIGHT);
+        row.getCell(3).numFmt = '"$"#,##0.00';
+        row.getCell(3).font = { bold: true, color: { argb: BLUE } };
+      });
+
+      if (cats.length === 0) {
+        ws5.getRow(4).values = ['Sin datos', '', ''];
+      }
+
+      // Descargar
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, `DulceDuo_Reporte_${from}_${to}.xlsx`);
     }
 
     function printReport() {
