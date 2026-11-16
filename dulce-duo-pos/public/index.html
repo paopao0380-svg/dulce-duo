@@ -52,7 +52,7 @@
             <i class="fa-solid fa-user absolute left-4 top-1/2 -translate-y-1/2 text-pink-400"></i>
             <input type="text" id="username" required autocomplete="username"
               class="w-full pl-11 pr-4 py-3 rounded-2xl border-2 border-pink-100 focus:border-dulce-fucsia focus:outline-none transition bg-dulce-rosaFondo/50"
-              placeholder="cajera o admin">
+              placeholder="cajera, admin o contador">
           </div>
         </div>
         <div>
@@ -75,7 +75,8 @@
 
       <div class="mt-6 pt-5 border-t border-pink-100 text-center text-xs text-gray-500">
         <p class="mb-1">Usuarios de prueba:</p>
-        <p><strong>cajera</strong> / cajera123 &nbsp;·&nbsp; <strong>admin</strong> / admin123</p>
+        <p><strong>cajera</strong> / cajera123</p>
+        <p><strong>admin</strong> / admin123 &nbsp;·&nbsp; <strong>contador</strong> / contador123</p>
       </div>
     </div>
 
@@ -85,10 +86,16 @@
   <script src="js/db.js"></script>
   <script>
     // Si ya está logueado, redirigir
-    const user = getCurrentUser();
-    if (user) {
-      window.location.href = user.role === 'admin' ? 'admin.html' : 'pos.html';
+    function redirectByRole(role) {
+      if (role === 'admin' || role === 'contador') {
+        window.location.href = 'admin.html';
+      } else {
+        window.location.href = 'pos.html';
+      }
     }
+
+    const user = getCurrentUser();
+    if (user) redirectByRole(user.role);
 
     document.getElementById('loginForm').addEventListener('submit', function(e) {
       e.preventDefault();
@@ -98,11 +105,7 @@
 
       const session = login(username, password);
       if (session) {
-        if (session.role === 'admin') {
-          window.location.href = 'admin.html';
-        } else {
-          window.location.href = 'pos.html';
-        }
+        redirectByRole(session.role);
       } else {
         errorEl.textContent = 'Usuario o contraseña incorrectos';
         errorEl.classList.remove('hidden');
