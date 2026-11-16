@@ -11,7 +11,8 @@ const DB_KEYS = {
   SALES: 'dulce_sales',
   EXPENSES: 'dulce_expenses',
   SETTINGS: 'dulce_settings',
-  CURRENT_USER: 'dulce_current_user'
+  CURRENT_USER: 'dulce_current_user',
+  ACCESS_LOG: 'dulce_access_log'
 };
 
 // ==================== UTILIDADES ====================
@@ -142,13 +143,56 @@ function login(username, password) {
   if (user) {
     const session = { id: user.id, username: user.username, role: user.role, name: user.name };
     localStorage.setItem(DB_KEYS.CURRENT_USER, JSON.stringify(session));
+    logAccess(user, 'ingreso');
     return session;
   }
   return null;
 }
 
 function logout() {
+  const user = getCurrentUser();
+  if (user) logAccess(user, 'salida');
   localStorage.removeItem(DB_KEYS.CURRENT_USER);
+}
+
+function logAccess(user, action) {
+  const logs = load(DB_KEYS.ACCESS_LOG, []);
+  logs.push({
+    id: generateId(),
+    user_id: user.id,
+    username: user.username,
+    name: user.name,
+    role: user.role,
+    action: action, // ingreso | salida
+    at: new Date().toISOString()
+  });
+  // guardar solo los últimos 500 registros
+  save(DB_KEYS.ACCESS_LOG, logs.slice(-500));
+}
+
+function getAccessLogs(limit = 100) {
+  return load(DB_KEYS.ACCESS_LOG, []).slice().reverse().slice(0, limit);
+}
+
+function getUsers() {
+  return load(DB_KEYS.USERS);
+}
+
+function updateUser(userId, data) {
+  const users = load(DB_KEYS.USERS);
+  const idx = users.findIndex(u => u.id === userId);
+  if (idx < 0) return null;
+  if (data.username) {
+    const exists = users.find(u => u.username === data.username && u.id !== userId);
+    if (exists) throw new Error('Ese nombre de usuario ya existe');
+    users[idx].username = data.username.trim();
+  }
+  if (data.name) users[idx].name = data.name.trim();
+  if (data.password && data.password.length >= 4) {
+    users[idx].password = data.password;
+  }
+  save(DB_KEYS.USERS, users);
+  return users[idx];
 }
 
 function getCurrentUser() {
