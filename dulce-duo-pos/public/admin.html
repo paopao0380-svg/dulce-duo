@@ -41,19 +41,19 @@
       </div>
       <div class="flex items-center gap-2 flex-wrap">
         <span id="adminName" class="text-sm font-medium text-gray-600 hidden sm:inline"></span>
-        <button onclick="showSection('dashboard')" class="px-3 py-2 rounded-xl text-sm font-semibold bg-pink-50 text-dulce-cafe hover:bg-pink-100 transition">
+        <button id="btnNavDashboard" onclick="showSection('dashboard')" class="px-3 py-2 rounded-xl text-sm font-semibold bg-pink-50 text-dulce-cafe hover:bg-pink-100 transition">
           <i class="fa-solid fa-chart-pie mr-1"></i> Dashboard
         </button>
-        <button onclick="showSection('inventory')" class="px-3 py-2 rounded-xl text-sm font-semibold bg-pink-50 text-dulce-cafe hover:bg-pink-100 transition">
+        <button id="btnNavInventory" onclick="showSection('inventory')" class="px-3 py-2 rounded-xl text-sm font-semibold bg-pink-50 text-dulce-cafe hover:bg-pink-100 transition">
           <i class="fa-solid fa-boxes-stacked mr-1"></i> Inventario
         </button>
-        <button onclick="showSection('reports')" class="px-3 py-2 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition">
+        <button id="btnNavReports" onclick="showSection('reports')" class="px-3 py-2 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition">
           <i class="fa-solid fa-file-lines mr-1"></i> Reportes
         </button>
-        <button onclick="openVentasHoy()" class="px-3 py-2 rounded-xl text-sm font-semibold bg-purple-600 text-white hover:bg-purple-700 transition">
+        <button id="btnNavVentasHoy" onclick="openVentasHoy()" class="px-3 py-2 rounded-xl text-sm font-semibold bg-purple-600 text-white hover:bg-purple-700 transition">
           <i class="fa-solid fa-cash-register mr-1"></i> Ventas del Día
         </button>
-        <button onclick="showSection('expenses')" class="px-3 py-2 rounded-xl text-sm font-semibold bg-green-600 text-white hover:bg-green-700 transition">
+        <button id="btnNavGasto" onclick="showSection('expenses')" class="px-3 py-2 rounded-xl text-sm font-semibold bg-green-600 text-white hover:bg-green-700 transition">
           <i class="fa-solid fa-plus mr-1"></i> Gasto
         </button>
         <button onclick="logoutAndRedirect()" class="px-3 py-2 rounded-xl text-sm font-semibold bg-red-500 text-white hover:bg-red-600 transition">
@@ -417,15 +417,32 @@
 
   <script src="js/db.js"></script>
   <script>
-    // Auth
-    const user = requireAuth('admin');
+    // Auth: admin y contador
+    const user = requireAuth(['admin', 'contador']);
+    const isContador = user && user.role === 'contador';
+
     if (user) {
-      document.getElementById('adminName').textContent = user.name;
+      document.getElementById('adminName').textContent = user.name + (isContador ? ' · Contador' : ' · Admin');
       document.getElementById('adminName').classList.remove('hidden');
+      const subtitle = document.querySelector('header p.text-xs');
+      if (subtitle) {
+        subtitle.textContent = isContador ? 'Panel Contable · Solo lectura (SRI)' : 'Panel de Administración';
+      }
+    }
+
+    // Restricciones para Contador: solo reportes y consulta
+    if (isContador) {
+      ['btnNavInventory', 'btnNavGasto', 'btnNavDashboard'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+      });
+      // Contador entra directo a Reportes
+      setTimeout(() => showSection('reports'), 50);
     }
 
     document.getElementById('todayLabel').textContent = new Date().toLocaleDateString('es-EC', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    document.getElementById('expDate').value = getToday();
+    const expDateEl = document.getElementById('expDate');
+    if (expDateEl) expDateEl.value = getToday();
 
     // Navegación
     function showSection(name) {
