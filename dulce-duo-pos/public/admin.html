@@ -353,6 +353,28 @@
           </div>
         </div>
       </div>
+    
+      <!-- Respaldo de datos -->
+      <div class="bg-white rounded-2xl border-2 border-amber-200 p-5 shadow-sm">
+        <h3 class="font-display font-bold text-lg text-amber-700 mb-2">
+          <i class="fa-solid fa-hard-drive mr-2"></i>Respaldo de datos
+        </h3>
+        <p class="text-sm text-gray-600 mb-4">
+          Las ventas y gastos se guardan en este navegador. Al actualizar el sistema <strong>no se borran</strong>.
+          Aun así, descarga un respaldo de vez en cuando por seguridad (cambio de equipo, borrado de historial, etc.).
+        </p>
+        <div class="flex flex-wrap gap-3">
+          <button onclick="doDownloadBackup()" class="px-4 py-2.5 rounded-xl bg-amber-500 text-white font-bold text-sm hover:bg-amber-600 transition">
+            <i class="fa-solid fa-download mr-1"></i> Descargar respaldo
+          </button>
+          <label class="px-4 py-2.5 rounded-xl bg-white border-2 border-amber-300 text-amber-800 font-bold text-sm hover:bg-amber-50 transition cursor-pointer">
+            <i class="fa-solid fa-upload mr-1"></i> Restaurar respaldo
+            <input type="file" accept="application/json,.json" class="hidden" onchange="doRestoreBackup(event)">
+          </label>
+        </div>
+        <p id="backupMsg" class="text-xs text-gray-500 mt-3"></p>
+      </div>
+
     </section>
 
   </main>
@@ -469,6 +491,17 @@
     const user = requireAuth(['admin', 'contador']);
     const isContador = user && user.role === 'contador';
 
+    // Cargar datos compartidos del servidor
+    initDB().then(() => {
+      if (!isContador && typeof loadDashboard === 'function') loadDashboard();
+      if (isContador && typeof showSection === 'function') {
+        // showSection reports already scheduled
+      }
+    }).catch(() => {
+      alert('No se pudo conectar al servidor. Revisa la conexión.');
+    });
+
+
     if (user) {
       document.getElementById('adminName').textContent = user.name + (isContador ? ' · Contador' : ' · Admin');
       document.getElementById('adminName').classList.remove('hidden');
@@ -526,8 +559,8 @@
       return colors[role] || 'bg-gray-100 text-gray-600';
     }
 
-    function loadUsersPanel() {
-      const users = getUsers();
+    async function loadUsersPanel() {
+      const users = await getUsers();
       const box = document.getElementById('usersList');
       if (!box) return;
       box.innerHTML = users.map(u => `
@@ -560,7 +593,7 @@
       `).join('');
     }
 
-    function saveUserChanges(userId) {
+    async function saveUserChanges(userId) {
       const name = document.getElementById('u_name_' + userId).value.trim();
       const username = document.getElementById('u_user_' + userId).value.trim();
       const password = document.getElementById('u_pass_' + userId).value;
@@ -569,7 +602,7 @@
       try {
         const data = { name, username };
         if (password) data.password = password;
-        updateUser(userId, data);
+        await updateUser(userId, data);
         alert('Usuario actualizado correctamente');
         loadUsersPanel();
         // Si cambió el usuario actual, actualizar etiqueta
@@ -582,8 +615,8 @@
       }
     }
 
-    function loadAccessLogs() {
-      const logs = getAccessLogs(80);
+    async function loadAccessLogs() {
+      const logs = await getAccessLogs(80);
       const body = document.getElementById('accessLogBody');
       if (!body) return;
       if (!logs.length) {
@@ -607,8 +640,41 @@
     }
 
 
-    function logoutAndRedirect() {
-      logout();
+
+    async function doDownloadBackup() {
+      try {
+        await downloadBackup();
+        const msg = document.getElementById('backupMsg');
+        if (msg) msg.textContent = 'Respaldo descargado correctamente. Guárdalo en un lugar seguro.';
+      } catch (e) {
+        alert('No se pudo generar el respaldo');
+      }
+    }
+
+    function doRestoreBackup(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      if (!confirm('Esto restaurará ventas, gastos, productos y usuarios desde el archivo.\\n\\n¿Deseas continuar?')) {
+        event.target.value = '';
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = async function() {
+        try {
+          const payload = JSON.parse(reader.result);
+          await importFullBackup(payload);
+          alert('Respaldo restaurado. La página se recargará.');
+          location.reload();
+        } catch (err) {
+          alert('Archivo inválido o dañado: ' + (err.message || err));
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    async function logoutAndRedirect() {
+      try { await logout(); } catch (_) {}
       window.location.href = 'index.html';
     }
 
@@ -840,7 +906,7 @@
       loadDashboard();
     }
 
-    document.getElementById('productForm').addEventListener('submit', function(e) {
+    document.getElementById('productForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const id = document.getElementById('prodId').value;
       const product = {
@@ -855,7 +921,7 @@
         active: document.getElementById('prodActive').checked,
         popular: document.getElementById('prodPopular').checked
       };
-      saveProduct(product);
+      await saveProduct(product);
       closeProductModal();
       loadInventory();
     });
@@ -1628,7 +1694,7 @@
       document.getElementById(id).addEventListener('change', calcExpense);
     });
 
-    document.getElementById('expenseForm').addEventListener('submit', function(e) {
+    document.getElementById('expenseForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const calc = calcExpense();
       const expense = {
@@ -1645,7 +1711,7 @@
         iva_amount: calc.ivaAmount,
         total: calc.total
       };
-      addExpense(expense);
+      await addExpense(expense);
       alert('Gasto registrado correctamente');
       this.reset();
       document.getElementById('expDate').value = getToday();

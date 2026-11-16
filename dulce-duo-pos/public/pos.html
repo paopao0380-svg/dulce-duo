@@ -169,6 +169,11 @@
   <script>
     // Auth check
     const currentUser = requireAuth();
+    if (currentUser && currentUser.role === 'admin') {
+      // admin puede usar POS también
+    } else if (currentUser && currentUser.role === 'contador') {
+      window.location.href = 'admin.html';
+    }
     if (currentUser) {
       document.getElementById('userBadge').textContent = currentUser.name + ' (' + currentUser.role + ')';
     }
@@ -178,6 +183,14 @@
     let cart = [];
     let orderType = 'Efectivo';
     let lastSale = null;
+
+    // Cargar datos del servidor (compartidos)
+    initDB().then(() => {
+      if (typeof renderProducts === 'function') renderProducts();
+      if (typeof renderCategories === 'function') renderCategories();
+    }).catch(() => {
+      alert('No se pudo conectar al servidor. Revisa la conexión e intenta de nuevo.');
+    });
 
     // Init
     renderCategories();
@@ -343,24 +356,26 @@
       document.getElementById('mobileCartModal').classList.toggle('hidden');
     }
 
-    function processOrder() {
+    async function processOrder() {
       if (cart.length === 0) return;
       for (const item of cart) {
         const p = getProductById(item.id);
         if (!p || (p.stock || 0) < item.qty) {
-          alert(`Stock insuficiente para ${item.name}`);
+          alert('Stock insuficiente para ' + item.name);
           return;
         }
       }
-
-      lastSale = createSale(cart, orderType, currentUser.id);
-      clearCart();
-      document.getElementById('mobileCartModal').classList.add('hidden');
-
-      document.getElementById('successTicket').textContent = lastSale.ticket;
-      document.getElementById('successTotal').textContent = formatMoney(lastSale.total);
-      document.getElementById('successModal').classList.remove('hidden');
-      document.getElementById('successModal').classList.add('flex');
+      try {
+        lastSale = await createSale(cart, orderType, currentUser.id);
+        clearCart();
+        document.getElementById('mobileCartModal').classList.add('hidden');
+        document.getElementById('successTicket').textContent = lastSale.ticket;
+        document.getElementById('successTotal').textContent = formatMoney(lastSale.total);
+        document.getElementById('successModal').classList.remove('hidden');
+        document.getElementById('successModal').classList.add('flex');
+      } catch (e) {
+        alert(e.message || 'No se pudo registrar la venta');
+      }
     }
 
     function closeSuccess() {

@@ -93,17 +93,17 @@
     const user = getCurrentUser();
     if (user) redirectByRole(user.role);
 
-    document.getElementById('loginForm').addEventListener('submit', function(e) {
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value;
       const errorEl = document.getElementById('errorMsg');
 
-      const session = login(username, password);
-      if (session) {
-        redirectByRole(session.role);
-      } else {
-        errorEl.textContent = 'Usuario o contraseña incorrectos';
+      try {
+        const session = await login(username, password);
+        if (session) redirectByRole(session.role);
+      } catch (err) {
+        errorEl.textContent = err.message || 'Usuario o contraseña incorrectos';
         errorEl.classList.remove('hidden');
       }
     });

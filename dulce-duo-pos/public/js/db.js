@@ -1,202 +1,96 @@
 /**
- * Dulce Dúo POS - Capa de datos (localStorage)
- * Persistencia local para inventario, ventas, gastos y usuarios.
- * Ideal para uso en un solo equipo o como MVP antes de migrar a backend.
+ * Dulce Dúo POS - Cliente de datos
+ * Usa la API del servidor para que PC y celular compartan la misma información.
+ * Mantiene caché en memoria para lecturas rápidas.
  */
 
-const DB_KEYS = {
-  USERS: 'dulce_users',
-  PRODUCTS: 'dulce_products',
-  CATEGORIES: 'dulce_categories',
-  SALES: 'dulce_sales',
-  EXPENSES: 'dulce_expenses',
-  SETTINGS: 'dulce_settings',
-  CURRENT_USER: 'dulce_current_user',
-  ACCESS_LOG: 'dulce_access_log'
+const API = ''; // mismo origen
+
+let cache = {
+  products: [],
+  categories: [],
+  sales: [],
+  expenses: [],
+  users: [],
+  settings: { ticketPrefix: 'DD', nextTicket: 1, ivaRate: 0 },
+  access_log: [],
+  ready: false
 };
 
-// ==================== UTILIDADES ====================
-function generateId() {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+const SESSION_KEY = 'dulce_current_user';
+
+function formatMoney(n) {
+  return '$' + (Number(n) || 0).toFixed(2);
 }
 
 function getToday() {
   return new Date().toISOString().split('T')[0];
 }
 
-function formatMoney(n) {
-  return '$' + (Number(n) || 0).toFixed(2);
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
 }
 
-function load(key, defaultValue = []) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : defaultValue;
-  } catch (e) {
-    console.error('Error loading', key, e);
-    return defaultValue;
-  }
-}
-
-function save(key, data) {
-  localStorage.setItem(key, JSON.stringify(data));
-}
-
-// ==================== INICIALIZACIÓN ====================
-function initDB() {
-  // Usuarios por defecto
-  if (!localStorage.getItem(DB_KEYS.USERS)) {
-    const defaultUsers = [
-      {
-        id: 'u1',
-        username: 'cajera',
-        password: 'cajera123',
-        role: 'cajera',
-        name: 'Cajera Principal'
-      },
-      {
-        id: 'u2',
-        username: 'admin',
-        password: 'admin123',
-        role: 'admin',
-        name: 'Administrador'
-      },
-      {
-        id: 'u3',
-        username: 'contador',
-        password: 'contador123',
-        role: 'contador',
-        name: 'Contador Externo'
-      }
-    ];
-    save(DB_KEYS.USERS, defaultUsers);
-  } else {
-    // Asegurar que exista el usuario contador en instalaciones previas
-    const users = load(DB_KEYS.USERS);
-    if (!users.find(u => u.role === 'contador')) {
-      users.push({
-        id: 'u3',
-        username: 'contador',
-        password: 'contador123',
-        role: 'contador',
-        name: 'Contador Externo'
-      });
-      save(DB_KEYS.USERS, users);
-    }
-  }
-
-  // Categorías por defecto (basadas en el modelo)
-  if (!localStorage.getItem(DB_KEYS.CATEGORIES)) {
-    const cats = [
-      { id: 'frappes', name: 'Frappés', icon: '🥤', description: 'Cremosos, helados y coronados con crema batida' },
-      { id: 'helados', name: 'Helados Clásicos', icon: '🍦', description: 'Conos crujientes, copas y sabores artesanales' },
-      { id: 'waffles', name: 'Waffles', icon: '🧇', description: 'Doraditos por fuera, esponjosos con helado y frutas' },
-      { id: 'antojitos', name: 'Antojitos y Dulces', icon: '🍰', description: 'Postres irresistibles, crepas, brownies y más' },
-      { id: 'batidos', name: 'Batidos Naturales', icon: '🍓', description: 'Fruta fresca seleccionada batida al instante' },
-      { id: 'tostadas-cafe', name: 'Tostadas y Café', icon: '☕', description: 'Café pasado aromático y tostadas crujientes' }
-    ];
-    save(DB_KEYS.CATEGORIES, cats);
-  }
-
-  // Productos de ejemplo
-  if (!localStorage.getItem(DB_KEYS.PRODUCTS)) {
-    const products = [
-      { id: 101, category: 'frappes', name: 'Frappé Dulce Dúo Fresa', desc: 'Fresa natural, helado de vainilla, crema chantilly y cereza.', price: 4.50, stock: 50, min_stock: 10, emoji: '🥤', popular: true, active: true },
-      { id: 102, category: 'frappes', name: 'Frappé Mocha Caramelo', desc: 'Espresso intenso, chocolate, salsa de caramelo y crema.', price: 4.75, stock: 40, min_stock: 8, emoji: '🧋', popular: false, active: true },
-      { id: 103, category: 'frappes', name: 'Frappé Oreo Tentación', desc: 'Galletas Oreo trituradas con base cremosa de leche y sirope.', price: 4.80, stock: 35, min_stock: 8, emoji: '🍪', popular: true, active: true },
-      { id: 201, category: 'helados', name: 'Cono Dúo Corazón', desc: 'Dos bolas artesanales (Fresa y Vainilla) en cono galleta.', price: 3.25, stock: 80, min_stock: 15, emoji: '🍦', popular: true, active: true },
-      { id: 202, category: 'helados', name: 'Copa Banana Split', desc: 'Tres sabores de helado, banano fresco, crema y nueces.', price: 5.50, stock: 30, min_stock: 5, emoji: '🍨', popular: false, active: true },
-      { id: 203, category: 'helados', name: 'Tulipa Suprema de Frutos Rojos', desc: 'Canasta de barquillo con helado y coulis tibio de mora.', price: 4.90, stock: 25, min_stock: 5, emoji: '🍧', popular: false, active: true },
-      { id: 301, category: 'waffles', name: 'Waffle Amor de Fresa', desc: 'Waffle belga, fresas frescas, bola de helado y leche condensada.', price: 5.75, stock: 40, min_stock: 8, emoji: '🧇', popular: true, active: true },
-      { id: 302, category: 'waffles', name: 'Waffle Choco-Avellana', desc: 'Bañado en crema de avellanas, banano caramelizado y helado.', price: 6.00, stock: 35, min_stock: 8, emoji: '🍫', popular: false, active: true },
-      { id: 303, category: 'waffles', name: 'Mini Waffles Dúo (6 uds)', desc: 'Ideales para compartir con miel de maple y frutas picadas.', price: 4.50, stock: 20, min_stock: 5, emoji: '🍯', popular: false, active: true },
-      { id: 401, category: 'antojitos', name: 'Brownie Tibio con Helado', desc: 'Brownie de chocolate oscuro coronado con helado de vainilla.', price: 4.60, stock: 25, min_stock: 5, emoji: '🍫', popular: true, active: true },
-      { id: 402, category: 'antojitos', name: 'Fresas con Crema Especial', desc: 'Fresas seleccionadas con nuestra crema dulce secreta de la casa.', price: 3.75, stock: 40, min_stock: 10, emoji: '🍓', popular: true, active: true },
-      { id: 403, category: 'antojitos', name: 'Cheesecake de Maracuyá', desc: 'Porción cremosa con base de galleta dorada y glaseado tropical.', price: 4.25, stock: 18, min_stock: 5, emoji: '🍰', popular: false, active: true },
-      { id: 501, category: 'batidos', name: 'Batido Cremoso de Mora y Fresa', desc: '100% fruta natural en leche o agua, refrescante y nutritivo.', price: 3.00, stock: 50, min_stock: 10, emoji: '🍓', popular: true, active: true },
-      { id: 502, category: 'batidos', name: 'Batido Tropical Mango-Maracuyá', desc: 'Pulpa natural de mango dulce con toque ácido de maracuyá.', price: 3.25, stock: 45, min_stock: 10, emoji: '🥭', popular: false, active: true },
-      { id: 503, category: 'batidos', name: 'Batido Energético Guanábana', desc: 'Pulpa pura de guanábana batida con leche fría.', price: 3.25, stock: 30, min_stock: 8, emoji: '🥤', popular: false, active: true },
-      { id: 601, category: 'tostadas-cafe', name: 'Combo Tostada Mixta + Café', desc: 'Tostada crocante de jamón y queso + taza de café pasado.', price: 3.90, stock: 60, min_stock: 10, emoji: '🥪', popular: true, active: true },
-      { id: 602, category: 'tostadas-cafe', name: 'Cappuccino Cremoso Dúo', desc: 'Café arábigo de altura con espuma sedosa y toque de canela.', price: 2.75, stock: 100, min_stock: 15, emoji: '☕', popular: true, active: true },
-      { id: 603, category: 'tostadas-cafe', name: 'Tostadas Francesas con Miel', desc: 'Pan brioche dorado con mantequilla, canela y miel de abeja.', price: 4.10, stock: 25, min_stock: 5, emoji: '🍞', popular: false, active: true }
-    ];
-    save(DB_KEYS.PRODUCTS, products);
-  }
-
-  if (!localStorage.getItem(DB_KEYS.SALES)) save(DB_KEYS.SALES, []);
-  if (!localStorage.getItem(DB_KEYS.EXPENSES)) save(DB_KEYS.EXPENSES, []);
-  if (!localStorage.getItem(DB_KEYS.SETTINGS)) {
-    save(DB_KEYS.SETTINGS, {
-      businessName: 'Dulce Dúo',
-      slogan: 'Heladería y algo más',
-      ivaRate: 0,
-      ticketPrefix: 'DD',
-      nextTicket: 1
-    });
-  }
-}
-
-// ==================== AUTH ====================
-function login(username, password) {
-  const users = load(DB_KEYS.USERS);
-  const user = users.find(u => u.username === username && u.password === password);
-  if (user) {
-    const session = { id: user.id, username: user.username, role: user.role, name: user.name };
-    localStorage.setItem(DB_KEYS.CURRENT_USER, JSON.stringify(session));
-    logAccess(user, 'ingreso');
-    return session;
-  }
-  return null;
-}
-
-function logout() {
-  const user = getCurrentUser();
-  if (user) logAccess(user, 'salida');
-  localStorage.removeItem(DB_KEYS.CURRENT_USER);
-}
-
-function logAccess(user, action) {
-  const logs = load(DB_KEYS.ACCESS_LOG, []);
-  logs.push({
-    id: generateId(),
-    user_id: user.id,
-    username: user.username,
-    name: user.name,
-    role: user.role,
-    action: action, // ingreso | salida
-    at: new Date().toISOString()
+async function api(path, options = {}) {
+  const res = await fetch(API + path, {
+    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    ...options
   });
-  // guardar solo los últimos 500 registros
-  save(DB_KEYS.ACCESS_LOG, logs.slice(-500));
-}
-
-function getAccessLogs(limit = 100) {
-  return load(DB_KEYS.ACCESS_LOG, []).slice().reverse().slice(0, limit);
-}
-
-function getUsers() {
-  return load(DB_KEYS.USERS);
-}
-
-function updateUser(userId, data) {
-  const users = load(DB_KEYS.USERS);
-  const idx = users.findIndex(u => u.id === userId);
-  if (idx < 0) return null;
-  if (data.username) {
-    const exists = users.find(u => u.username === data.username && u.id !== userId);
-    if (exists) throw new Error('Ese nombre de usuario ya existe');
-    users[idx].username = data.username.trim();
+  if (!res.ok) {
+    let msg = 'Error de servidor';
+    try {
+      const j = await res.json();
+      msg = j.error || msg;
+    } catch (_) {}
+    throw new Error(msg);
   }
-  if (data.name) users[idx].name = data.name.trim();
-  if (data.password && data.password.length >= 4) {
-    users[idx].password = data.password;
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+async function initDB() {
+  try {
+    const data = await api('/api/bootstrap');
+    cache.products = data.products || [];
+    cache.categories = data.categories || [];
+    cache.sales = data.sales || [];
+    cache.expenses = data.expenses || [];
+    cache.settings = data.settings || cache.settings;
+    cache.ready = true;
+  } catch (e) {
+    console.error('No se pudo conectar con el servidor', e);
+    cache.ready = false;
+    throw e;
   }
-  save(DB_KEYS.USERS, users);
-  return users[idx];
+}
+
+// ---------- Auth ----------
+async function login(username, password) {
+  const session = await api('/api/login', {
+    method: 'POST',
+    body: JSON.stringify({ username, password })
+  });
+  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  return session;
+}
+
+async function logout() {
+  const user = getCurrentUser();
+  if (user) {
+    try {
+      await api('/api/logout', { method: 'POST', body: JSON.stringify(user) });
+    } catch (_) {}
+  }
+  localStorage.removeItem(SESSION_KEY);
 }
 
 function getCurrentUser() {
-  return load(DB_KEYS.CURRENT_USER, null);
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (_) {
+    return null;
+  }
 }
 
 function requireAuth(role = null) {
@@ -207,7 +101,6 @@ function requireAuth(role = null) {
   }
   if (role) {
     const allowed = Array.isArray(role) ? role : [role];
-    // admin siempre puede entrar a paneles admin/contador
     if (!allowed.includes(user.role) && user.role !== 'admin') {
       alert('No tienes permiso para acceder a esta sección.');
       if (user.role === 'cajera') window.location.href = 'pos.html';
@@ -219,120 +112,34 @@ function requireAuth(role = null) {
   return user;
 }
 
-// ==================== PRODUCTOS ====================
+// ---------- Lecturas (caché) ----------
 function getProducts(onlyActive = true) {
-  let products = load(DB_KEYS.PRODUCTS);
+  let products = cache.products || [];
   if (onlyActive) products = products.filter(p => p.active !== false);
   return products;
 }
 
 function getProductById(id) {
-  return getProducts(false).find(p => p.id == id);
+  return (cache.products || []).find(p => String(p.id) === String(id));
 }
 
-function saveProduct(product) {
-  const products = load(DB_KEYS.PRODUCTS);
-  const idx = products.findIndex(p => p.id == product.id);
-  if (idx >= 0) {
-    products[idx] = { ...products[idx], ...product };
-  } else {
-    product.id = product.id || Date.now();
-    products.push(product);
-  }
-  save(DB_KEYS.PRODUCTS, products);
-  return product;
-}
-
-function updateStock(productId, delta) {
-  const products = load(DB_KEYS.PRODUCTS);
-  const p = products.find(x => x.id == productId);
-  if (p) {
-    p.stock = Math.max(0, (p.stock || 0) + delta);
-    save(DB_KEYS.PRODUCTS, products);
-  }
-}
-
-function getLowStockProducts() {
-  return getProducts(false).filter(p => p.active !== false && (p.stock || 0) <= (p.min_stock || 5));
-}
-
-// ==================== CATEGORÍAS ====================
 function getCategories() {
-  return load(DB_KEYS.CATEGORIES);
+  return cache.categories || [];
 }
 
-// ==================== VENTAS ====================
 function getSales() {
-  return load(DB_KEYS.SALES).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  return (cache.sales || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 }
 
-function createSale(cart, orderType, userId) {
-  const settings = load(DB_KEYS.SETTINGS);
-  const ticketNumber = `${settings.ticketPrefix}-${String(settings.nextTicket).padStart(4, '0')}`;
-  settings.nextTicket += 1;
-  save(DB_KEYS.SETTINGS, settings);
-
-  const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
-  // Negocio no cobra IVA en ventas al cliente
-  const tax = 0;
-  const total = subtotal;
-
-  const sale = {
-    id: generateId(),
-    ticket: ticketNumber,
-    user_id: userId,
-    order_type: orderType,
-    items: cart.map(i => ({
-      product_id: i.id,
-      name: i.name,
-      emoji: i.emoji,
-      qty: i.qty,
-      unit_price: i.price,
-      subtotal: i.price * i.qty
-    })),
-    subtotal,
-    tax,
-    total,
-    created_at: new Date().toISOString()
-  };
-
-  // Descontar stock
-  cart.forEach(item => updateStock(item.id, -item.qty));
-
-  const sales = load(DB_KEYS.SALES);
-  sales.push(sale);
-  save(DB_KEYS.SALES, sales);
-  return sale;
+function getExpenses() {
+  return (cache.expenses || []).slice().sort((a, b) => new Date(b.date || b.created_at) - new Date(a.date || a.created_at));
 }
 
 function getSalesByDateRange(from, to) {
-  const sales = getSales();
-  return sales.filter(s => {
+  return getSales().filter(s => {
     const d = s.created_at.split('T')[0];
     return d >= from && d <= to;
   });
-}
-
-function getTodaySales() {
-  const today = getToday();
-  return getSalesByDateRange(today, today);
-}
-
-// ==================== GASTOS ====================
-function getExpenses() {
-  return load(DB_KEYS.EXPENSES).sort((a, b) => new Date(b.date || b.created_at) - new Date(a.date || a.created_at));
-}
-
-function addExpense(expense) {
-  const exp = {
-    id: generateId(),
-    ...expense,
-    created_at: new Date().toISOString()
-  };
-  const expenses = load(DB_KEYS.EXPENSES);
-  expenses.push(exp);
-  save(DB_KEYS.EXPENSES, expenses);
-  return exp;
 }
 
 function getExpensesByDateRange(from, to) {
@@ -342,12 +149,36 @@ function getExpensesByDateRange(from, to) {
   });
 }
 
-function getTodayExpenses() {
-  const today = getToday();
-  return getExpensesByDateRange(today, today);
+function getTodaySales() {
+  const t = getToday();
+  return getSalesByDateRange(t, t);
 }
 
-// ==================== REPORTES / STATS ====================
+function getTodayExpenses() {
+  const t = getToday();
+  return getExpensesByDateRange(t, t);
+}
+
+function getLowStockProducts() {
+  return getProducts(false).filter(p => p.active !== false && (p.stock || 0) <= (p.min_stock || 5));
+}
+
+function getTopProducts(limit = 5) {
+  const counts = {};
+  getSales().forEach(s => {
+    (s.items || []).forEach(i => {
+      counts[i.product_id] = (counts[i.product_id] || 0) + i.qty;
+    });
+  });
+  return Object.entries(counts)
+    .map(([id, qty]) => {
+      const p = getProductById(id);
+      return { id, name: p ? p.name : 'Producto', emoji: p ? p.emoji : '📦', qty };
+    })
+    .sort((a, b) => b.qty - a.qty)
+    .slice(0, limit);
+}
+
 function getDashboardStats() {
   const todaySales = getTodaySales();
   const todayExpenses = getTodayExpenses();
@@ -365,22 +196,119 @@ function getDashboardStats() {
   };
 }
 
-function getTopProducts(limit = 5) {
-  const sales = getSales();
-  const counts = {};
-  sales.forEach(s => {
-    s.items.forEach(i => {
-      counts[i.product_id] = (counts[i.product_id] || 0) + i.qty;
-    });
+// ---------- Escrituras (API + caché) ----------
+async function createSale(cart, orderType, userId) {
+  const sale = await api('/api/sales', {
+    method: 'POST',
+    body: JSON.stringify({ cart, order_type: orderType, user_id: userId })
   });
-  return Object.entries(counts)
-    .map(([id, qty]) => {
-      const p = getProductById(id);
-      return { id, name: p ? p.name : 'Producto', emoji: p ? p.emoji : '📦', qty };
-    })
-    .sort((a, b) => b.qty - a.qty)
-    .slice(0, limit);
+  cache.sales.push(sale);
+  // refrescar stock local
+  cart.forEach(item => {
+    const p = cache.products.find(x => String(x.id) === String(item.id));
+    if (p) p.stock = Math.max(0, (p.stock || 0) - Number(item.qty));
+  });
+  return sale;
 }
 
-// Inicializar al cargar
-initDB();
+async function saveProduct(product) {
+  const existing = cache.products.find(p => String(p.id) === String(product.id));
+  let saved;
+  if (existing) {
+    saved = await api('/api/products/' + product.id, {
+      method: 'PUT',
+      body: JSON.stringify(product)
+    });
+    const idx = cache.products.findIndex(p => String(p.id) === String(product.id));
+    cache.products[idx] = saved;
+  } else {
+    saved = await api('/api/products', {
+      method: 'POST',
+      body: JSON.stringify(product)
+    });
+    cache.products.push(saved);
+  }
+  return saved;
+}
+
+async function addExpense(expense) {
+  const exp = await api('/api/expenses', {
+    method: 'POST',
+    body: JSON.stringify(expense)
+  });
+  cache.expenses.push(exp);
+  return exp;
+}
+
+async function getUsers() {
+  const users = await api('/api/users');
+  cache.users = users;
+  return users;
+}
+
+async function updateUser(userId, data) {
+  const updated = await api('/api/users/' + userId, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  });
+  return updated;
+}
+
+async function getAccessLogs(limit = 80) {
+  const logs = await api('/api/access-log');
+  cache.access_log = logs;
+  return logs.slice(0, limit);
+}
+
+async function downloadBackup() {
+  const payload = await api('/api/backup');
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'DulceDuo_Respaldo_' + getToday() + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  return payload;
+}
+
+async function importFullBackup(payload) {
+  await api('/api/backup/restore', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+  await initDB();
+  return true;
+}
+
+// Compat: init síncrono no aplica; las páginas deben await initDB()
+// Export helpers usados por HTML
+window.initDB = initDB;
+window.login = login;
+window.logout = logout;
+window.getCurrentUser = getCurrentUser;
+window.requireAuth = requireAuth;
+window.formatMoney = formatMoney;
+window.getToday = getToday;
+window.getProducts = getProducts;
+window.getProductById = getProductById;
+window.getCategories = getCategories;
+window.getSales = getSales;
+window.getExpenses = getExpenses;
+window.getSalesByDateRange = getSalesByDateRange;
+window.getExpensesByDateRange = getExpensesByDateRange;
+window.getTodaySales = getTodaySales;
+window.getTodayExpenses = getTodayExpenses;
+window.getDashboardStats = getDashboardStats;
+window.getLowStockProducts = getLowStockProducts;
+window.getTopProducts = getTopProducts;
+window.createSale = createSale;
+window.saveProduct = saveProduct;
+window.addExpense = addExpense;
+window.getUsers = getUsers;
+window.updateUser = updateUser;
+window.getAccessLogs = getAccessLogs;
+window.downloadBackup = downloadBackup;
+window.importFullBackup = importFullBackup;
