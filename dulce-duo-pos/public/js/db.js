@@ -49,7 +49,7 @@ function initDB() {
       {
         id: 'u1',
         username: 'cajera',
-        password: 'cajera123', // En producción hashear
+        password: 'cajera123',
         role: 'cajera',
         name: 'Cajera Principal'
       },
@@ -59,9 +59,29 @@ function initDB() {
         password: 'admin123',
         role: 'admin',
         name: 'Administrador'
+      },
+      {
+        id: 'u3',
+        username: 'contador',
+        password: 'contador123',
+        role: 'contador',
+        name: 'Contador Externo'
       }
     ];
     save(DB_KEYS.USERS, defaultUsers);
+  } else {
+    // Asegurar que exista el usuario contador en instalaciones previas
+    const users = load(DB_KEYS.USERS);
+    if (!users.find(u => u.role === 'contador')) {
+      users.push({
+        id: 'u3',
+        username: 'contador',
+        password: 'contador123',
+        role: 'contador',
+        name: 'Contador Externo'
+      });
+      save(DB_KEYS.USERS, users);
+    }
   }
 
   // Categorías por defecto (basadas en el modelo)
@@ -108,7 +128,7 @@ function initDB() {
     save(DB_KEYS.SETTINGS, {
       businessName: 'Dulce Dúo',
       slogan: 'Heladería y algo más',
-      ivaRate: 0.15,
+      ivaRate: 0,
       ticketPrefix: 'DD',
       nextTicket: 1
     });
@@ -141,10 +161,16 @@ function requireAuth(role = null) {
     window.location.href = 'index.html';
     return null;
   }
-  if (role && user.role !== role && user.role !== 'admin') {
-    alert('No tienes permiso para acceder a esta sección.');
-    window.location.href = user.role === 'cajera' ? 'pos.html' : 'index.html';
-    return null;
+  if (role) {
+    const allowed = Array.isArray(role) ? role : [role];
+    // admin siempre puede entrar a paneles admin/contador
+    if (!allowed.includes(user.role) && user.role !== 'admin') {
+      alert('No tienes permiso para acceder a esta sección.');
+      if (user.role === 'cajera') window.location.href = 'pos.html';
+      else if (user.role === 'contador') window.location.href = 'admin.html';
+      else window.location.href = 'index.html';
+      return null;
+    }
   }
   return user;
 }
@@ -203,8 +229,9 @@ function createSale(cart, orderType, userId) {
   save(DB_KEYS.SETTINGS, settings);
 
   const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
-  const tax = subtotal * (settings.ivaRate || 0.15);
-  const total = subtotal + tax;
+  // Negocio no cobra IVA en ventas al cliente
+  const tax = 0;
+  const total = subtotal;
 
   const sale = {
     id: generateId(),
