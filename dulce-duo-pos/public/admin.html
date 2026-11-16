@@ -56,6 +56,9 @@
         <button id="btnNavGasto" onclick="showSection('expenses')" class="px-3 py-2 rounded-xl text-sm font-semibold bg-green-600 text-white hover:bg-green-700 transition">
           <i class="fa-solid fa-plus mr-1"></i> Gasto
         </button>
+        <button id="btnNavUsers" onclick="showSection('users')" class="px-3 py-2 rounded-xl text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition">
+          <i class="fa-solid fa-users mr-1"></i> Usuarios
+        </button>
         <button onclick="logoutAndRedirect()" class="px-3 py-2 rounded-xl text-sm font-semibold bg-red-500 text-white hover:bg-red-600 transition">
           <i class="fa-solid fa-right-from-bracket mr-1"></i> Salir
         </button>
@@ -307,6 +310,51 @@
         </div>
       </div>
     </section>
+
+    <!-- ==================== USUARIOS (solo Admin) ==================== -->
+    <section id="section-users" class="hidden space-y-6">
+      <div>
+        <h2 class="font-display text-2xl font-bold text-dulce-cafe">Gestión de Usuarios</h2>
+        <p class="text-sm text-gray-500">Modifica nombres, usuarios y contraseñas. Revisa ingresos y salidas del sistema.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Lista de usuarios -->
+        <div class="bg-white rounded-2xl border-2 border-pink-100 p-5 shadow-sm">
+          <h3 class="font-display font-bold text-lg text-dulce-fucsia mb-4">
+            <i class="fa-solid fa-user-pen mr-2"></i>Cuentas del sistema
+          </h3>
+          <div id="usersList" class="space-y-4"></div>
+        </div>
+
+        <!-- Registro de accesos -->
+        <div class="bg-white rounded-2xl border-2 border-indigo-100 p-5 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-display font-bold text-lg text-indigo-700">
+              <i class="fa-solid fa-clock-rotate-left mr-2"></i>Ingresos y salidas
+            </h3>
+            <button onclick="loadAccessLogs()" class="text-xs px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 font-semibold hover:bg-indigo-100">
+              Actualizar
+            </button>
+          </div>
+          <p class="text-xs text-gray-500 mb-3">Registro de Cajera y Contador (y Admin). Últimos movimientos.</p>
+          <div class="overflow-x-auto max-h-[420px] overflow-y-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-indigo-600 text-white sticky top-0">
+                <tr>
+                  <th class="p-2 text-left">Fecha / Hora</th>
+                  <th class="p-2 text-left">Usuario</th>
+                  <th class="p-2 text-left">Rol</th>
+                  <th class="p-2 text-left">Acción</th>
+                </tr>
+              </thead>
+              <tbody id="accessLogBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <!-- Modal Ventas del Día -->
@@ -432,7 +480,7 @@
 
     // Restricciones para Contador: solo reportes y consulta
     if (isContador) {
-      ['btnNavInventory', 'btnNavGasto', 'btnNavDashboard'].forEach(id => {
+      ['btnNavInventory', 'btnNavGasto', 'btnNavDashboard', 'btnNavUsers'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
       });
@@ -446,7 +494,7 @@
 
     // Navegación
     function showSection(name) {
-      ['dashboard', 'inventory', 'reports', 'expenses'].forEach(s => {
+      ['dashboard', 'inventory', 'reports', 'expenses', 'users'].forEach(s => {
         document.getElementById('section-' + s).classList.toggle('hidden', s !== name);
       });
       if (name === 'dashboard') loadDashboard();
@@ -454,7 +502,110 @@
       if (name === 'reports') {
         setReportRange('week');
       }
+      if (name === 'users') {
+        loadUsersPanel();
+        loadAccessLogs();
+      }
     }
+
+
+    // ==================== USUARIOS ====================
+    function roleLabel(role) {
+      if (role === 'admin') return 'Administrador';
+      if (role === 'cajera') return 'Cajera';
+      if (role === 'contador') return 'Contador';
+      return role;
+    }
+
+    function roleBadge(role) {
+      const colors = {
+        admin: 'bg-pink-100 text-dulce-fucsia',
+        cajera: 'bg-green-100 text-green-700',
+        contador: 'bg-indigo-100 text-indigo-700'
+      };
+      return colors[role] || 'bg-gray-100 text-gray-600';
+    }
+
+    function loadUsersPanel() {
+      const users = getUsers();
+      const box = document.getElementById('usersList');
+      if (!box) return;
+      box.innerHTML = users.map(u => `
+        <div class="border border-pink-100 rounded-2xl p-4 bg-dulce-rosaFondo/40">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <p class="font-bold text-dulce-cafe">${u.name}</p>
+              <span class="text-xs px-2 py-0.5 rounded-full font-semibold ${roleBadge(u.role)}">${roleLabel(u.role)}</span>
+            </div>
+            <i class="fa-solid fa-user-shield text-pink-300 text-xl"></i>
+          </div>
+          <div class="grid grid-cols-1 gap-2 text-sm">
+            <div>
+              <label class="text-xs font-semibold text-gray-500">Nombre visible</label>
+              <input id="u_name_${u.id}" value="${u.name.replace(/"/g, '&quot;')}" class="w-full mt-0.5 px-3 py-2 rounded-xl border border-pink-100 focus:border-dulce-fucsia focus:outline-none bg-white">
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-gray-500">Usuario (login)</label>
+              <input id="u_user_${u.id}" value="${u.username.replace(/"/g, '&quot;')}" class="w-full mt-0.5 px-3 py-2 rounded-xl border border-pink-100 focus:border-dulce-fucsia focus:outline-none bg-white">
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-gray-500">Nueva contraseña (dejar vacío para no cambiar)</label>
+              <input id="u_pass_${u.id}" type="password" placeholder="••••••••" class="w-full mt-0.5 px-3 py-2 rounded-xl border border-pink-100 focus:border-dulce-fucsia focus:outline-none bg-white">
+            </div>
+            <button onclick="saveUserChanges('${u.id}')" class="mt-1 w-full py-2 rounded-xl bg-dulce-fucsia text-white font-bold text-sm hover:bg-dulce-fucsiaDark transition">
+              <i class="fa-solid fa-floppy-disk mr-1"></i> Guardar cambios
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function saveUserChanges(userId) {
+      const name = document.getElementById('u_name_' + userId).value.trim();
+      const username = document.getElementById('u_user_' + userId).value.trim();
+      const password = document.getElementById('u_pass_' + userId).value;
+      if (!name || !username) return alert('Nombre y usuario son obligatorios');
+      if (password && password.length < 4) return alert('La contraseña debe tener al menos 4 caracteres');
+      try {
+        const data = { name, username };
+        if (password) data.password = password;
+        updateUser(userId, data);
+        alert('Usuario actualizado correctamente');
+        loadUsersPanel();
+        // Si cambió el usuario actual, actualizar etiqueta
+        const me = getCurrentUser();
+        if (me && me.id === userId) {
+          document.getElementById('adminName').textContent = name + ' · Admin';
+        }
+      } catch (err) {
+        alert(err.message || 'No se pudo guardar');
+      }
+    }
+
+    function loadAccessLogs() {
+      const logs = getAccessLogs(80);
+      const body = document.getElementById('accessLogBody');
+      if (!body) return;
+      if (!logs.length) {
+        body.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-gray-400">Aún no hay registros de acceso</td></tr>';
+        return;
+      }
+      body.innerHTML = logs.map(l => {
+        const d = new Date(l.at);
+        const fecha = d.toLocaleDateString('es-EC') + ' ' + d.toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const isIn = l.action === 'ingreso';
+        const badge = isIn
+          ? '<span class="px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700">Ingreso</span>'
+          : '<span class="px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">Salida</span>';
+        return `<tr class="border-t border-gray-100 hover:bg-indigo-50/40">
+          <td class="p-2 whitespace-nowrap">${fecha}</td>
+          <td class="p-2 font-medium">${l.name || l.username}<div class="text-xs text-gray-400">@${l.username}</div></td>
+          <td class="p-2"><span class="text-xs px-2 py-0.5 rounded-full font-semibold ${roleBadge(l.role)}">${roleLabel(l.role)}</span></td>
+          <td class="p-2">${badge}</td>
+        </tr>`;
+      }).join('');
+    }
+
 
     function logoutAndRedirect() {
       logout();
