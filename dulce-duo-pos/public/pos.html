@@ -116,12 +116,11 @@
       </div>
 
       <div class="p-4 bg-dulce-rosaFondo/80 border-t-2 border-pink-200 space-y-2">
-        <div class="flex justify-between text-sm"><span>Subtotal</span><span id="subtotalText">$0.00</span></div>
-        <div class="flex justify-between text-sm"><span>IVA (15%)</span><span id="taxText">$0.00</span></div>
-        <div class="flex justify-between items-center pt-2 border-t border-pink-200">
-          <span class="font-display font-bold text-lg">Total</span>
+        <div class="flex justify-between items-center">
+          <span class="font-display font-bold text-lg text-dulce-cafe">Total a cobrar</span>
           <span id="totalText" class="font-display font-bold text-2xl text-dulce-fucsia">$0.00</span>
         </div>
+        <p class="text-[10px] text-gray-400 text-right -mt-1">Precios finales · Sin IVA</p>
         <button onclick="processOrder()" id="checkoutBtn" disabled
           class="w-full py-3.5 rounded-2xl font-display font-bold text-white bg-gradient-to-r from-dulce-fucsia to-pink-600 disabled:opacity-40 shadow-dulce">
           <i class="fa-solid fa-check mr-2"></i> Confirmar e Imprimir
@@ -300,12 +299,8 @@
       const totalItems = cart.reduce((s, i) => s + i.qty, 0);
       document.getElementById('mobileCartBadge').textContent = totalItems;
 
-      const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
-      const tax = subtotal * 0.15;
-      const total = subtotal + tax;
+      const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
 
-      document.getElementById('subtotalText').textContent = formatMoney(subtotal);
-      document.getElementById('taxText').textContent = formatMoney(tax);
       document.getElementById('totalText').textContent = formatMoney(total);
       document.getElementById('mobileTotalText').textContent = formatMoney(total);
       document.getElementById('checkoutBtn').disabled = cart.length === 0;
@@ -394,8 +389,7 @@
             </div>
           `).join('')}
           <hr>
-          <div style="display:flex; justify-content:space-between;"><span>Subtotal</span><span>$${s.subtotal.toFixed(2)}</span></div>
-          <div style="display:flex; justify-content:space-between;"><span>IVA 15%</span><span>$${s.tax.toFixed(2)}</span></div>
+          <div style="text-align:center; font-size:9px; color:#888; margin-top:4px;">Precios finales · Sin IVA</div>
           <div style="display:flex; justify-content:space-between; font-weight:bold; font-size: 14px; margin-top: 4px;">
             <span>TOTAL</span><span>$${s.total.toFixed(2)}</span>
           </div>
