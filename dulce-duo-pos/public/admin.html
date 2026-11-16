@@ -917,20 +917,19 @@
             <tr>
               <th class="p-2.5 text-left">Ticket</th>
               <th class="p-2.5 text-left">Fecha</th>
-              <th class="p-2.5 text-left">Tipo</th>
-              <th class="p-2.5 text-right">Subtotal</th>
-              <th class="p-2.5 text-right">IVA</th>
+              <th class="p-2.5 text-left">Hora</th>
+              <th class="p-2.5 text-left">Forma de pago</th>
               <th class="p-2.5 text-right">Total</th>
             </tr>
           </thead><tbody>`;
         sales.forEach((s, i) => {
           const bg = i % 2 === 0 ? 'bg-white' : 'bg-pink-50';
+          const hora = new Date(s.created_at).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
           html += `<tr class="${bg} border-t border-gray-100">
             <td class="p-2.5 font-medium">${s.ticket}</td>
             <td class="p-2.5">${s.created_at.slice(0,10)}</td>
+            <td class="p-2.5">${hora}</td>
             <td class="p-2.5">${labelPago(s.order_type)}</td>
-            <td class="p-2.5 text-right">${formatMoney(s.subtotal)}</td>
-            <td class="p-2.5 text-right">${formatMoney(s.tax)}</td>
             <td class="p-2.5 text-right font-semibold text-green-600">${formatMoney(s.total)}</td>
           </tr>`;
         });
@@ -1454,16 +1453,16 @@
 
         let ventasRows = '';
         currentReport.sales.forEach(s => {
+          const hora = new Date(s.created_at).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' });
           ventasRows += `<tr>
             <td>${s.ticket}</td>
             <td>${s.created_at.slice(0,10)}</td>
+            <td>${hora}</td>
             <td>${labelPago(s.order_type)}</td>
-            <td class="right">${formatMoney(s.subtotal)}</td>
-            <td class="right">${formatMoney(s.tax)}</td>
             <td class="right strong">${formatMoney(s.total)}</td>
           </tr>`;
         });
-        if (!ventasRows) ventasRows = '<tr><td colspan="6" class="center">Sin ventas en el período</td></tr>';
+        if (!ventasRows) ventasRows = '<tr><td colspan="5" class="center">Sin ventas en el período</td></tr>';
 
         let gastosRows = '';
         currentReport.expenses.forEach(e => {
@@ -1574,8 +1573,7 @@
   <table>
     <thead>
       <tr>
-        <th>Ticket</th><th>Fecha</th><th>Tipo</th>
-        <th class="right">Subtotal</th><th class="right">IVA</th><th class="right">Total</th>
+        <th>Ticket</th><th>Fecha</th><th>Hora</th><th>Forma de pago</th><th class="right">Total</th>
       </tr>
     </thead>
     <tbody>${ventasRows}</tbody>
