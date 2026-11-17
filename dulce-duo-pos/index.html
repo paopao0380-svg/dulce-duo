@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dulce Dúo | Acceso al Sistema</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { display: ['Fredoka', 'cursive'], sans: ['Poppins', 'sans-serif'] },
+          colors: {
+            dulce: {
+              fucsia: '#E91E63', fucsiaDark: '#C2185B', rosaSuave: '#FCE4EC',
+              rosaFondo: '#FFF0F5', caramelo: '#D4883C', cafe: '#6D3B1E'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background: linear-gradient(135deg, #FFF0F5 0%, #FCE4EC 50%, #FFF8E1 100%);
+      min-height: 100vh;
+    }
+  </style>
+</head>
+<body class="font-sans flex items-center justify-center p-4">
+  <div class="w-full max-w-md">
+    <!-- Logo y marca -->
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-tr from-dulce-fucsia via-pink-400 to-dulce-caramelo shadow-xl mb-4">
+        <span class="text-5xl">🍦</span>
+      </div>
+      <h1 class="font-display text-4xl font-bold text-dulce-fucsia">Dulce Dúo</h1>
+      <p class="text-dulce-cafe font-medium tracking-wide mt-1">— Heladería y algo más —</p>
+      <p class="text-sm text-gray-500 mt-2">Sistema POS & Gestión</p>
+    </div>
+
+    <!-- Tarjeta de Login -->
+    <div class="bg-white rounded-3xl shadow-2xl border-2 border-pink-100 p-8">
+      <h2 class="font-display text-2xl font-bold text-dulce-cafe text-center mb-6">Iniciar Sesión</h2>
+      
+      <form id="loginForm" class="space-y-5">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">Usuario</label>
+          <div class="relative">
+            <i class="fa-solid fa-user absolute left-4 top-1/2 -translate-y-1/2 text-pink-400"></i>
+            <input type="text" id="username" required autocomplete="username"
+              class="w-full pl-11 pr-4 py-3 rounded-2xl border-2 border-pink-100 focus:border-dulce-fucsia focus:outline-none transition bg-dulce-rosaFondo/50"
+              placeholder="cajera, admin o contador">
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">Contraseña</label>
+          <div class="relative">
+            <i class="fa-solid fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-pink-400"></i>
+            <input type="password" id="password" required autocomplete="current-password"
+              class="w-full pl-11 pr-4 py-3 rounded-2xl border-2 border-pink-100 focus:border-dulce-fucsia focus:outline-none transition bg-dulce-rosaFondo/50"
+              placeholder="••••••••">
+          </div>
+        </div>
+
+        <div id="errorMsg" class="hidden text-red-600 text-sm text-center bg-red-50 py-2 rounded-xl"></div>
+
+        <button type="submit"
+          class="w-full py-3.5 rounded-2xl font-display font-bold text-lg text-white bg-gradient-to-r from-dulce-fucsia to-pink-600 hover:from-dulce-fucsiaDark hover:to-pink-700 shadow-lg transition transform active:scale-[0.98]">
+          <i class="fa-solid fa-right-to-bracket mr-2"></i> Entrar
+        </button>
+      </form>
+
+      
+    </div>
+
+    <p class="text-center text-xs text-gray-400 mt-6">© 2026 Dulce Dúo · Sistema desarrollado para gestión de heladería</p>
+  </div>
+
+  <script src="js/db.js"></script>
+  <script>
+    // Si ya está logueado, redirigir
+    function redirectByRole(role) {
+      if (role === 'admin' || role === 'contador') {
+        window.location.href = 'admin.html';
+      } else {
+        window.location.href = 'pos.html';
+      }
+    }
+
+    const user = getCurrentUser();
+    if (user) redirectByRole(user.role);
+
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      const errorEl = document.getElementById('errorMsg');
+
+      try {
+        const session = await login(username, password);
+        if (session) redirectByRole(session.role);
+      } catch (err) {
+        errorEl.textContent = err.message || 'Usuario o contraseña incorrectos';
+        errorEl.classList.remove('hidden');
+      }
+    });
+  </script>
+</body>
+</html>
