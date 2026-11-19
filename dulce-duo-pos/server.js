@@ -115,6 +115,40 @@ app.put('/api/products/:id', (req, res) => {
   res.json(data.products[idx]);
 });
 
+
+app.post('/api/products/seed-catalog', (req, res) => {
+  const data = store.read();
+  const full = store.getFullCatalog();
+  let added = 0;
+  let updated = 0;
+  full.forEach(catalogItem => {
+    const idx = data.products.findIndex(p => String(p.id) === String(catalogItem.id));
+    if (idx < 0) {
+      data.products.push({ ...catalogItem });
+      added++;
+    } else {
+      // Actualiza nombre, desc, precio, categoría, emoji, etc. SIN tocar el stock actual
+      const currentStock = data.products[idx].stock;
+      data.products[idx] = {
+        ...data.products[idx],
+        name: catalogItem.name,
+        desc: catalogItem.desc,
+        category: catalogItem.category,
+        price: catalogItem.price,
+        min_stock: catalogItem.min_stock,
+        emoji: catalogItem.emoji,
+        popular: catalogItem.popular,
+        active: true
+      };
+      // conserva stock si ya existía
+      if (currentStock != null) data.products[idx].stock = currentStock;
+      updated++;
+    }
+  });
+  store.write(data);
+  res.json({ ok: true, added, updated, total: data.products.length, products: data.products });
+});
+
 app.get('/api/categories', (req, res) => {
   res.json(store.read().categories);
 });

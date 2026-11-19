@@ -311,4 +311,12 @@ window.getUsers = getUsers;
 window.updateUser = updateUser;
 window.getAccessLogs = getAccessLogs;
 window.downloadBackup = downloadBackup;
+
+async function seedFullCatalog() {
+  const result = await api('/api/products/seed-catalog', { method: 'POST', body: '{}' });
+  cache.products = result.products || [];
+  return result;
+}
+
 window.importFullBackup = importFullBackup;
+window.seedFullCatalog = seedFullCatalog;
