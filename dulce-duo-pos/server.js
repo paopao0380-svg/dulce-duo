@@ -1,6 +1,6 @@
 /**
  * Dulce Dúo POS - Servidor
- * Sirve el frontend y la API para que todos los dispositivos compartan los mismos datos.
+ * Datos durables en Postgres (DATABASE_URL) para no perder ventas al actualizar.
  */
 const express = require('express');
 const path = require('path');
@@ -14,27 +14,39 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/api/health', (req, res) => {
-  res.json({ ok: true, app: 'Dulce Dúo POS', time: new Date().toISOString() });
-});
+function asyncHandler(fn) {
+  return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+}
 
-app.get('/api/bootstrap', (req, res) => {
-  const data = store.read();
+app.get('/api/health', asyncHandler(async (req, res) => {
+  await store.init();
+  res.json({
+    ok: true,
+    app: 'Dulce Dúo POS',
+    durable: store.isDurable(),
+    time: new Date().toISOString()
+  });
+}));
+
+app.get('/api/bootstrap', asyncHandler(async (req, res) => {
+  const data = await store.read();
   res.json({
     products: data.products,
     categories: data.categories,
     settings: data.settings,
     sales: data.sales,
-    expenses: data.expenses
+    expenses: data.expenses,
+    durable: store.isDurable()
   });
-});
+}));
 
-app.post('/api/login', (req, res) => {
+app.post('/api/login', asyncHandler(async (req, res) => {
   const { username, password } = req.body || {};
-  const data = store.read();
+  const data = await store.read();
   const user = data.users.find(u => u.username === username && u.password === password);
   if (!user) return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
 
+  data.access_log = data.access_log || [];
   data.access_log.push({
     id: store.genId(),
     user_id: user.id,
@@ -45,7 +57,7 @@ app.post('/api/login', (req, res) => {
     at: new Date().toISOString()
   });
   data.access_log = data.access_log.slice(-500);
-  store.write(data);
+  await store.write(data);
 
   res.json({
     id: user.id,
@@ -53,12 +65,13 @@ app.post('/api/login', (req, res) => {
     role: user.role,
     name: user.name
   });
-});
+}));
 
-app.post('/api/logout', (req, res) => {
+app.post('/api/logout', asyncHandler(async (req, res) => {
   const { id, username, name, role } = req.body || {};
   if (id || username) {
-    const data = store.read();
+    const data = await store.read();
+    data.access_log = data.access_log || [];
     data.access_log.push({
       id: store.genId(),
       user_id: id,
@@ -69,17 +82,18 @@ app.post('/api/logout', (req, res) => {
       at: new Date().toISOString()
     });
     data.access_log = data.access_log.slice(-500);
-    store.write(data);
+    await store.write(data);
   }
   res.json({ ok: true });
-});
+}));
 
-app.get('/api/users', (req, res) => {
-  res.json(store.read().users);
-});
+app.get('/api/users', asyncHandler(async (req, res) => {
+  const data = await store.read();
+  res.json(data.users);
+}));
 
-app.put('/api/users/:id', (req, res) => {
-  const data = store.read();
+app.put('/api/users/:id', asyncHandler(async (req, res) => {
+  const data = await store.read();
   const idx = data.users.findIndex(u => u.id === req.params.id);
   if (idx < 0) return res.status(404).json({ error: 'Usuario no encontrado' });
   const { name, username, password } = req.body || {};
@@ -90,47 +104,45 @@ app.put('/api/users/:id', (req, res) => {
   }
   if (name) data.users[idx].name = String(name).trim();
   if (password && String(password).length >= 4) data.users[idx].password = String(password);
-  store.write(data);
+  await store.write(data);
   res.json(data.users[idx]);
-});
+}));
 
-app.get('/api/products', (req, res) => {
-  res.json(store.read().products);
-});
+app.get('/api/products', asyncHandler(async (req, res) => {
+  const data = await store.read();
+  res.json(data.products);
+}));
 
-app.post('/api/products', (req, res) => {
-  const data = store.read();
-  const p = { ...req.body, id: req.body.id || Date.now() };
+app.post('/api/products', asyncHandler(async (req, res) => {
+  const data = await store.read();
+  const p = Object.assign({}, req.body, { id: req.body.id || Date.now() });
   data.products.push(p);
-  store.write(data);
+  await store.write(data);
   res.json(p);
-});
+}));
 
-app.put('/api/products/:id', (req, res) => {
-  const data = store.read();
+app.put('/api/products/:id', asyncHandler(async (req, res) => {
+  const data = await store.read();
   const idx = data.products.findIndex(p => String(p.id) === String(req.params.id));
   if (idx < 0) return res.status(404).json({ error: 'Producto no encontrado' });
-  data.products[idx] = { ...data.products[idx], ...req.body, id: data.products[idx].id };
-  store.write(data);
+  data.products[idx] = Object.assign({}, data.products[idx], req.body, { id: data.products[idx].id });
+  await store.write(data);
   res.json(data.products[idx]);
-});
+}));
 
-
-app.post('/api/products/seed-catalog', (req, res) => {
-  const data = store.read();
+app.post('/api/products/seed-catalog', asyncHandler(async (req, res) => {
+  const data = await store.read();
   const full = store.getFullCatalog();
   let added = 0;
   let updated = 0;
   full.forEach(catalogItem => {
     const idx = data.products.findIndex(p => String(p.id) === String(catalogItem.id));
     if (idx < 0) {
-      data.products.push({ ...catalogItem });
+      data.products.push(Object.assign({}, catalogItem));
       added++;
     } else {
-      // Actualiza nombre, desc, precio, categoría, emoji, etc. SIN tocar el stock actual
       const currentStock = data.products[idx].stock;
-      data.products[idx] = {
-        ...data.products[idx],
+      data.products[idx] = Object.assign({}, data.products[idx], {
         name: catalogItem.name,
         desc: catalogItem.desc,
         category: catalogItem.category,
@@ -139,31 +151,33 @@ app.post('/api/products/seed-catalog', (req, res) => {
         emoji: catalogItem.emoji,
         popular: catalogItem.popular,
         active: true
-      };
-      // conserva stock si ya existía
+      });
       if (currentStock != null) data.products[idx].stock = currentStock;
       updated++;
     }
   });
-  store.write(data);
+  await store.write(data);
   res.json({ ok: true, added, updated, total: data.products.length, products: data.products });
-});
+}));
 
-app.get('/api/categories', (req, res) => {
-  res.json(store.read().categories);
-});
+app.get('/api/categories', asyncHandler(async (req, res) => {
+  const data = await store.read();
+  res.json(data.categories);
+}));
 
-app.get('/api/sales', (req, res) => {
-  const sales = store.read().sales.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+app.get('/api/sales', asyncHandler(async (req, res) => {
+  const data = await store.read();
+  const sales = (data.sales || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   res.json(sales);
-});
+}));
 
-app.post('/api/sales', (req, res) => {
-  const data = store.read();
+app.post('/api/sales', asyncHandler(async (req, res) => {
+  const data = await store.read();
   const cart = req.body.cart || [];
   const orderType = req.body.order_type || 'Efectivo';
   const userId = req.body.user_id;
 
+  if (!data.settings) data.settings = { ticketPrefix: 'DD', nextTicket: 1, ivaRate: 0 };
   const ticketNumber = data.settings.ticketPrefix + '-' + String(data.settings.nextTicket).padStart(4, '0');
   data.settings.nextTicket += 1;
 
@@ -192,45 +206,49 @@ app.post('/api/sales', (req, res) => {
     if (p) p.stock = Math.max(0, (p.stock || 0) - Number(item.qty));
   });
 
+  data.sales = data.sales || [];
   data.sales.push(sale);
-  store.write(data);
+  await store.write(data);
   res.json(sale);
-});
+}));
 
-app.get('/api/expenses', (req, res) => {
-  const expenses = store.read().expenses.slice().sort((a, b) => new Date(b.date || b.created_at) - new Date(a.date || a.created_at));
+app.get('/api/expenses', asyncHandler(async (req, res) => {
+  const data = await store.read();
+  const expenses = (data.expenses || []).slice().sort((a, b) => new Date(b.date || b.created_at) - new Date(a.date || a.created_at));
   res.json(expenses);
-});
+}));
 
-app.post('/api/expenses', (req, res) => {
-  const data = store.read();
+app.post('/api/expenses', asyncHandler(async (req, res) => {
+  const data = await store.read();
   const exp = Object.assign({ id: store.genId(), created_at: new Date().toISOString() }, req.body);
+  data.expenses = data.expenses || [];
   data.expenses.push(exp);
-  store.write(data);
+  await store.write(data);
   res.json(exp);
-});
+}));
 
-app.get('/api/access-log', (req, res) => {
-  const logs = store.read().access_log.slice().reverse().slice(0, 100);
+app.get('/api/access-log', asyncHandler(async (req, res) => {
+  const data = await store.read();
+  const logs = (data.access_log || []).slice().reverse().slice(0, 100);
   res.json(logs);
-});
+}));
 
-app.get('/api/backup', (req, res) => {
-  const data = store.read();
+app.get('/api/backup', asyncHandler(async (req, res) => {
+  const data = await store.read();
   res.json({
     version: 1,
     exported_at: new Date().toISOString(),
     app: 'Dulce Duo POS',
     data: data
   });
-});
+}));
 
-app.post('/api/backup/restore', (req, res) => {
+app.post('/api/backup/restore', asyncHandler(async (req, res) => {
   const payload = req.body;
   if (!payload || !payload.data) return res.status(400).json({ error: 'Respaldo inválido' });
-  const current = store.read();
+  const current = await store.read();
   const incoming = payload.data;
-  store.write({
+  await store.write({
     users: incoming.users || current.users,
     categories: incoming.categories || current.categories,
     products: incoming.products || current.products,
@@ -240,13 +258,24 @@ app.post('/api/backup/restore', (req, res) => {
     settings: incoming.settings || current.settings
   });
   res.json({ ok: true });
-});
+}));
 
 app.get('*', (req, res) => {
   if (req.path.startsWith('/api')) return res.status(404).json({ error: 'Not found' });
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(PORT, () => {
-  console.log('Dulce Duo POS en puerto ' + PORT);
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).json({ error: err.message || 'Error interno' });
+});
+
+store.init().then(() => {
+  app.listen(PORT, () => {
+    console.log('Dulce Duo POS en puerto ' + PORT);
+    console.log('Almacenamiento durable: ' + (store.isDurable() ? 'SI (Postgres)' : 'NO (archivo local)'));
+  });
+}).catch(err => {
+  console.error('No se pudo iniciar el almacén:', err);
+  process.exit(1);
 });

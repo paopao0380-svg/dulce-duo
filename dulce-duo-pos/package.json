@@ -1,6 +1,6 @@
 {
   "name": "dulce-duo-pos",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Sistema POS para Heladería Dulce Dúo - Ventas, Inventario y Contabilidad",
   "main": "server.js",
   "scripts": {
@@ -13,6 +13,7 @@
     "exceljs": "^4.4.0",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
+    "pg": "^8.13.1",
     "uuid": "^11.0.3"
   },
   "engines": {

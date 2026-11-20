@@ -24,7 +24,14 @@ function formatMoney(n) {
 }
 
 function getToday() {
-  return new Date().toISOString().split('T')[0];
+  // Fecha local Ecuador (UTC-5), no UTC del servidor
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Guayaquil' });
+}
+
+function toLocalDateKey(isoOrDate) {
+  const d = (isoOrDate instanceof Date) ? isoOrDate : new Date(isoOrDate);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-CA', { timeZone: 'America/Guayaquil' });
 }
 
 function generateId() {
@@ -137,14 +144,15 @@ function getExpenses() {
 
 function getSalesByDateRange(from, to) {
   return getSales().filter(s => {
-    const d = s.created_at.split('T')[0];
+    const d = toLocalDateKey(s.created_at);
     return d >= from && d <= to;
   });
 }
 
 function getExpensesByDateRange(from, to) {
   return getExpenses().filter(e => {
-    const d = (e.date || e.created_at || '').split('T')[0];
+    const raw = e.date || e.created_at || '';
+    const d = raw.length === 10 ? raw : toLocalDateKey(raw);
     return d >= from && d <= to;
   });
 }

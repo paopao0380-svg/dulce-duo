@@ -134,14 +134,9 @@
           <h2 class="font-display text-2xl font-bold text-dulce-cafe">Gestión de Productos e Inventario</h2>
           <p class="text-sm text-gray-500">Panel de Administración</p>
         </div>
-        <div class="flex flex-wrap gap-2">
-          <button onclick="cargarCatalogoCompleto()" class="bg-amber-500 hover:bg-amber-600 text-white font-semibold px-4 py-2.5 rounded-xl shadow transition text-sm">
-            <i class="fa-solid fa-layer-group mr-1"></i> Cargar catálogo completo
-          </button>
-          <button onclick="openProductModal()" class="bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-2.5 rounded-xl shadow transition">
-            <i class="fa-solid fa-plus mr-1"></i> Nuevo Producto
-          </button>
-        </div>
+        <button onclick="openProductModal()" class="bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-2.5 rounded-xl shadow transition">
+          <i class="fa-solid fa-plus mr-1"></i> Nuevo Producto
+        </button>
       </div>
 
       <div class="bg-white rounded-2xl border border-pink-100 overflow-hidden shadow-sm">
@@ -365,8 +360,8 @@
           <i class="fa-solid fa-hard-drive mr-2"></i>Respaldo de datos
         </h3>
         <p class="text-sm text-gray-600 mb-4">
-          Las ventas y gastos se guardan en este navegador. Al actualizar el sistema <strong>no se borran</strong>.
-          Aun así, descarga un respaldo de vez en cuando por seguridad (cambio de equipo, borrado de historial, etc.).
+          Con la base de datos configurada, las ventas <strong>no se pierden</strong> al actualizar el sistema.
+          Este respaldo es opcional (copia de seguridad extra).
         </p>
         <div class="flex flex-wrap gap-3">
           <button onclick="doDownloadBackup()" class="px-4 py-2.5 rounded-xl bg-amber-500 text-white font-bold text-sm hover:bg-amber-600 transition">
@@ -809,7 +804,7 @@
       for (let i = 6; i >= 0; i--) {
         const d = new Date();
         d.setDate(d.getDate() - i);
-        const key = d.toISOString().split('T')[0];
+        const key = toLocalDateKey(d);
         days.push(d.toLocaleDateString('es-EC', { weekday: 'short', day: 'numeric' }));
         const daySales = getSalesByDateRange(key, key).reduce((s, x) => s + x.total, 0);
         const dayExp = getExpensesByDateRange(key, key).reduce((s, x) => s + (x.total || 0), 0);
@@ -837,16 +832,6 @@
     }
 
     // ==================== INVENTARIO ====================
-
-    async function cargarCatalogoCompleto() {
-      if (!confirm('Se agregarán los productos faltantes del catálogo completo.\nLos productos que ya existan conservarán su stock actual.\nLas ventas NO se borran.\n\n¿Continuar?')) return;
-      try {
-        const r = await seedFullCatalog();
-        alert('Catálogo actualizado.\nAgregados: ' + r.added + '\nActualizados: ' + r.updated + '\nTotal productos: ' + r.total);
-        if (typeof loadInventory === 'function') loadInventory();
-      } catch (e) {
-        alert(e.message || 'No se pudo cargar el catálogo');
-      }
     }
 
     function loadInventory() {
@@ -947,16 +932,17 @@
     let currentReport = { from: '', to: '', sales: [], expenses: [] };
 
     function setReportRange(type) {
-      const today = new Date();
-      let from, to = today.toISOString().split('T')[0];
+      const to = getToday(); // fecha Ecuador
+      let from = to;
       if (type === 'week') {
-        const d = new Date(today);
+        const parts = to.split('-').map(Number);
+        const d = new Date(parts[0], parts[1] - 1, parts[2]);
         d.setDate(d.getDate() - 6);
-        from = d.toISOString().split('T')[0];
+        from = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
         document.getElementById('btnWeek').className = 'px-4 py-2 rounded-full text-sm font-semibold bg-pink-100 text-dulce-fucsia';
         document.getElementById('btnMonth').className = 'px-4 py-2 rounded-full text-sm font-semibold bg-gray-100 text-gray-600';
       } else {
-        from = today.toISOString().slice(0, 8) + '01';
+        from = to.slice(0, 8) + '01';
         document.getElementById('btnMonth').className = 'px-4 py-2 rounded-full text-sm font-semibold bg-pink-100 text-dulce-fucsia';
         document.getElementById('btnWeek').className = 'px-4 py-2 rounded-full text-sm font-semibold bg-gray-100 text-gray-600';
       }
