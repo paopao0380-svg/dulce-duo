@@ -203,8 +203,8 @@
     });
 
     function logoutAndGo() {
-      logout();
-      window.location.href = 'index.html';
+      try { localStorage.removeItem('dulce_current_user'); localStorage.clear(); } catch (_) {}
+      window.location.replace('index.html?logout=1');
     }
 
     function renderCategories() {

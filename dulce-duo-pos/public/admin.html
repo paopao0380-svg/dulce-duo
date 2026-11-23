@@ -380,7 +380,7 @@
   </main>
 
   <!-- Modal Ventas del Día -->
-  <div id="ventasHoyModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4">
+  <div id="ventasHoyModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4 pointer-events-none" data-open="0">
     <div class="bg-white rounded-3xl max-w-3xl w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between mb-4">
         <div>
@@ -432,7 +432,7 @@
   </div>
 
   <!-- Modal Producto -->
-  <div id="productModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4">
+  <div id="productModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4 pointer-events-none">
     <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
       <h3 class="font-display text-xl font-bold text-dulce-fucsia mb-4" id="modalTitle">Nuevo Producto</h3>
       <form id="productForm" class="space-y-3">
@@ -514,6 +514,15 @@
     }
     const expDateEl = document.getElementById('expDate');
     if (expDateEl) expDateEl.value = getToday();
+
+    // Cerrar modales por si quedaron abiertos
+    ['ventasHoyModal', 'productModal'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.add('hidden', 'pointer-events-none');
+        el.classList.remove('flex', 'pointer-events-auto');
+      }
+    });
 
     // Cargar datos del servidor y luego mostrar pantalla
     initDB().then(() => {
@@ -675,10 +684,11 @@
       event.target.value = '';
     }
 
-    async function logoutAndRedirect() {
-      try { await logout(); } catch (_) {}
+    function logoutAndRedirect() {
       try { localStorage.removeItem('dulce_current_user'); } catch (_) {}
-      window.location.href = 'index.html?logout=1';
+      try { localStorage.clear(); } catch (_) {}
+      // No esperar al servidor: salir de inmediato
+      window.location.replace('index.html?logout=1');
     }
 
     // ==================== DASHBOARD ====================
@@ -732,13 +742,15 @@
       }
 
 
-      document.getElementById('ventasHoyModal').classList.remove('hidden');
-      document.getElementById('ventasHoyModal').classList.add('flex');
+      const vh = document.getElementById('ventasHoyModal');
+      vh.classList.remove('hidden', 'pointer-events-none');
+      vh.classList.add('flex', 'pointer-events-auto');
     }
 
     function closeVentasHoy() {
-      document.getElementById('ventasHoyModal').classList.add('hidden');
-      document.getElementById('ventasHoyModal').classList.remove('flex');
+      const vh = document.getElementById('ventasHoyModal');
+      vh.classList.add('hidden', 'pointer-events-none');
+      vh.classList.remove('flex', 'pointer-events-auto');
     }
 
     function loadDashboard() {
@@ -885,13 +897,15 @@
       const sel = document.getElementById('prodCategory');
       sel.innerHTML = getCategories().map(c => `<option value="${c.id}" ${product && product.category === c.id ? 'selected' : ''}>${c.name}</option>`).join('');
 
-      document.getElementById('productModal').classList.remove('hidden');
-      document.getElementById('productModal').classList.add('flex');
+      const pm = document.getElementById('productModal');
+      pm.classList.remove('hidden', 'pointer-events-none');
+      pm.classList.add('flex', 'pointer-events-auto');
     }
 
     function closeProductModal() {
-      document.getElementById('productModal').classList.add('hidden');
-      document.getElementById('productModal').classList.remove('flex');
+      const pm = document.getElementById('productModal');
+      pm.classList.add('hidden', 'pointer-events-none');
+      pm.classList.remove('flex', 'pointer-events-auto');
     }
 
     function editProduct(id) {
