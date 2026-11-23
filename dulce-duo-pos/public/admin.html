@@ -491,17 +491,6 @@
     const user = requireAuth(['admin', 'contador']);
     const isContador = user && user.role === 'contador';
 
-    // Cargar datos compartidos del servidor
-    initDB().then(() => {
-      if (!isContador && typeof loadDashboard === 'function') loadDashboard();
-      if (isContador && typeof showSection === 'function') {
-        // showSection reports already scheduled
-      }
-    }).catch(() => {
-      alert('No se pudo conectar al servidor. Revisa la conexión.');
-    });
-
-
     if (user) {
       document.getElementById('adminName').textContent = user.name + (isContador ? ' · Contador' : ' · Admin');
       document.getElementById('adminName').classList.remove('hidden');
@@ -511,19 +500,32 @@
       }
     }
 
-    // Restricciones para Contador: solo reportes y consulta
+    // Restricciones Contador: ocultar menús de operación
     if (isContador) {
       ['btnNavInventory', 'btnNavGasto', 'btnNavDashboard', 'btnNavUsers'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
       });
-      // Contador entra directo a Reportes
-      setTimeout(() => showSection('reports'), 50);
     }
 
-    document.getElementById('todayLabel').textContent = new Date().toLocaleDateString('es-EC', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const todayLabelEl = document.getElementById('todayLabel');
+    if (todayLabelEl) {
+      todayLabelEl.textContent = new Date().toLocaleDateString('es-EC', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    }
     const expDateEl = document.getElementById('expDate');
     if (expDateEl) expDateEl.value = getToday();
+
+    // Cargar datos del servidor y luego mostrar pantalla
+    initDB().then(() => {
+      if (isContador) {
+        showSection('reports');
+      } else if (typeof loadDashboard === 'function') {
+        loadDashboard();
+      }
+    }).catch((err) => {
+      console.error(err);
+      alert('No se pudo conectar al servidor. Revisa la conexión o espera unos segundos e intenta de nuevo.');
+    });
 
     // Navegación
     function showSection(name) {
@@ -675,7 +677,8 @@
 
     async function logoutAndRedirect() {
       try { await logout(); } catch (_) {}
-      window.location.href = 'index.html';
+      try { localStorage.removeItem('dulce_current_user'); } catch (_) {}
+      window.location.href = 'index.html?logout=1';
     }
 
     // ==================== DASHBOARD ====================
@@ -1706,8 +1709,7 @@
       showSection('dashboard');
     });
 
-    // Init
-    loadDashboard();
+    // Init: loadDashboard se llama tras initDB (arriba), no aquí
   </script>
 </body>
 </html>
