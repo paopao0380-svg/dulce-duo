@@ -24,7 +24,14 @@ function formatMoney(n) {
 }
 
 function getToday() {
-  return new Date().toISOString().split('T')[0];
+  // Fecha local Ecuador (UTC-5), no UTC del servidor
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Guayaquil' });
+}
+
+function toLocalDateKey(isoOrDate) {
+  const d = (isoOrDate instanceof Date) ? isoOrDate : new Date(isoOrDate);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-CA', { timeZone: 'America/Guayaquil' });
 }
 
 function generateId() {
@@ -32,20 +39,34 @@ function generateId() {
 }
 
 async function api(path, options = {}) {
-  const res = await fetch(API + path, {
-    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
-    ...options
-  });
-  if (!res.ok) {
-    let msg = 'Error de servidor';
-    try {
-      const j = await res.json();
-      msg = j.error || msg;
-    } catch (_) {}
-    throw new Error(msg);
+  const timeoutMs = options.timeoutMs || 15000;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const { timeoutMs: _t, ...fetchOpts } = options;
+    const res = await fetch(API + path, {
+      headers: { 'Content-Type': 'application/json', ...(fetchOpts.headers || {}) },
+      signal: controller.signal,
+      ...fetchOpts
+    });
+    if (!res.ok) {
+      let msg = 'Error de servidor';
+      try {
+        const j = await res.json();
+        msg = j.error || msg;
+      } catch (_) {}
+      throw new Error(msg);
+    }
+    if (res.status === 204) return null;
+    return res.json();
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error('El servidor tarda en responder. Espera 30 segundos e intenta de nuevo (Render Free se duerme).');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
   }
-  if (res.status === 204) return null;
-  return res.json();
 }
 
 async function initDB() {
@@ -76,12 +97,13 @@ async function login(username, password) {
 
 async function logout() {
   const user = getCurrentUser();
+  // Primero limpia sesión local para que la UI nunca quede atrapada
+  localStorage.removeItem(SESSION_KEY);
   if (user) {
     try {
-      await api('/api/logout', { method: 'POST', body: JSON.stringify(user) });
+      await api('/api/logout', { method: 'POST', body: JSON.stringify(user), timeoutMs: 3000 });
     } catch (_) {}
   }
-  localStorage.removeItem(SESSION_KEY);
 }
 
 function getCurrentUser() {
@@ -137,14 +159,15 @@ function getExpenses() {
 
 function getSalesByDateRange(from, to) {
   return getSales().filter(s => {
-    const d = s.created_at.split('T')[0];
+    const d = toLocalDateKey(s.created_at);
     return d >= from && d <= to;
   });
 }
 
 function getExpensesByDateRange(from, to) {
   return getExpenses().filter(e => {
-    const d = (e.date || e.created_at || '').split('T')[0];
+    const raw = e.date || e.created_at || '';
+    const d = raw.length === 10 ? raw : toLocalDateKey(raw);
     return d >= from && d <= to;
   });
 }
@@ -311,4 +334,12 @@ window.getUsers = getUsers;
 window.updateUser = updateUser;
 window.getAccessLogs = getAccessLogs;
 window.downloadBackup = downloadBackup;
+
+async function seedFullCatalog() {
+  const result = await api('/api/products/seed-catalog', { method: 'POST', body: '{}' });
+  cache.products = result.products || [];
+  return result;
+}
+
 window.importFullBackup = importFullBackup;
+window.seedFullCatalog = seedFullCatalog;
