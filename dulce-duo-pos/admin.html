@@ -8,9 +8,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script>
   <script>
     tailwind.config = {
       theme: {
@@ -26,6 +25,24 @@
   <style>
     body { background-color: #FFF0F5; }
     .tab-active { background: linear-gradient(135deg, #E91E63, #C2185B); color: white; }
+    /* Modales: control explícito para que NUNCA bloqueen clics cuando están cerrados */
+    .dd-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(0,0,0,0.5);
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      pointer-events: none;
+    }
+    .dd-modal.is-open {
+      display: flex;
+      pointer-events: auto;
+    }
+    header { position: sticky; top: 0; z-index: 50; }
+    header button { position: relative; z-index: 51; cursor: pointer; }
   </style>
 </head>
 <body class="font-sans text-gray-800 min-h-screen">
@@ -70,7 +87,7 @@
     <!-- ==================== DASHBOARD ==================== -->
     <section id="section-dashboard" class="space-y-6">
       <div class="flex items-center justify-between">
-        <h2 class="font-display text-2xl font-bold text-dulce-cafe">Panel Contable · Hoy</h2>
+        <h2 class="font-display text-2xl font-bold text-dulce-cafe">Dashboard · Hoy</h2>
         <span class="text-sm text-gray-500" id="todayLabel"></span>
       </div>
 
@@ -360,8 +377,8 @@
           <i class="fa-solid fa-hard-drive mr-2"></i>Respaldo de datos
         </h3>
         <p class="text-sm text-gray-600 mb-4">
-          Las ventas y gastos se guardan en este navegador. Al actualizar el sistema <strong>no se borran</strong>.
-          Aun así, descarga un respaldo de vez en cuando por seguridad (cambio de equipo, borrado de historial, etc.).
+          Con la base de datos configurada, las ventas <strong>no se pierden</strong> al actualizar el sistema.
+          Este respaldo es opcional (copia de seguridad extra).
         </p>
         <div class="flex flex-wrap gap-3">
           <button onclick="doDownloadBackup()" class="px-4 py-2.5 rounded-xl bg-amber-500 text-white font-bold text-sm hover:bg-amber-600 transition">
@@ -380,7 +397,7 @@
   </main>
 
   <!-- Modal Ventas del Día -->
-  <div id="ventasHoyModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4">
+  <div id="ventasHoyModal" class="dd-modal">
     <div class="bg-white rounded-3xl max-w-3xl w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between mb-4">
         <div>
@@ -432,7 +449,7 @@
   </div>
 
   <!-- Modal Producto -->
-  <div id="productModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4">
+  <div id="productModal" class="dd-modal">
     <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
       <h3 class="font-display text-xl font-bold text-dulce-fucsia mb-4" id="modalTitle">Nuevo Producto</h3>
       <form id="productForm" class="space-y-3">
@@ -491,53 +508,66 @@
     const user = requireAuth(['admin', 'contador']);
     const isContador = user && user.role === 'contador';
 
-    // Cargar datos compartidos del servidor
-    initDB().then(() => {
-      if (!isContador && typeof loadDashboard === 'function') loadDashboard();
-      if (isContador && typeof showSection === 'function') {
-        // showSection reports already scheduled
-      }
-    }).catch(() => {
-      alert('No se pudo conectar al servidor. Revisa la conexión.');
-    });
-
-
     if (user) {
-      document.getElementById('adminName').textContent = user.name + (isContador ? ' · Contador' : ' · Admin');
+      document.getElementById('adminName').textContent = (user.name || user.username) + (isContador ? ' · Contador' : ' · Administrador');
       document.getElementById('adminName').classList.remove('hidden');
+      document.getElementById('adminName').classList.add('sm:inline');
       const subtitle = document.querySelector('header p.text-xs');
       if (subtitle) {
         subtitle.textContent = isContador ? 'Panel Contable · Solo lectura (SRI)' : 'Panel de Administración';
       }
     }
 
-    // Restricciones para Contador: solo reportes y consulta
+    // Restricciones Contador: ocultar menús de operación
     if (isContador) {
       ['btnNavInventory', 'btnNavGasto', 'btnNavDashboard', 'btnNavUsers'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
       });
-      // Contador entra directo a Reportes
-      setTimeout(() => showSection('reports'), 50);
     }
 
-    document.getElementById('todayLabel').textContent = new Date().toLocaleDateString('es-EC', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const todayLabelEl = document.getElementById('todayLabel');
+    if (todayLabelEl) {
+      todayLabelEl.textContent = new Date().toLocaleDateString('es-EC', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    }
     const expDateEl = document.getElementById('expDate');
     if (expDateEl) expDateEl.value = getToday();
 
+    // Cerrar modales por si quedaron abiertos
+    ['ventasHoyModal', 'productModal'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('is-open');
+    });
+
+    // Cargar datos del servidor y luego mostrar pantalla
+    initDB().then(() => {
+      if (isContador) {
+        showSection('reports');
+      } else if (typeof loadDashboard === 'function') {
+        loadDashboard();
+      }
+    }).catch((err) => {
+      console.error(err);
+      alert('No se pudo conectar al servidor. Revisa la conexión o espera unos segundos e intenta de nuevo.');
+    });
+
     // Navegación
     function showSection(name) {
-      ['dashboard', 'inventory', 'reports', 'expenses', 'users'].forEach(s => {
-        document.getElementById('section-' + s).classList.toggle('hidden', s !== name);
-      });
-      if (name === 'dashboard') loadDashboard();
-      if (name === 'inventory') loadInventory();
-      if (name === 'reports') {
-        setReportRange('week');
-      }
-      if (name === 'users') {
-        loadUsersPanel();
-        loadAccessLogs();
+      try {
+        ['dashboard', 'inventory', 'reports', 'expenses', 'users'].forEach(s => {
+          const el = document.getElementById('section-' + s);
+          if (el) el.classList.toggle('hidden', s !== name);
+        });
+        if (name === 'dashboard') loadDashboard();
+        if (name === 'inventory') loadInventory();
+        if (name === 'reports') setReportRange('week');
+        if (name === 'users') {
+          loadUsersPanel();
+          loadAccessLogs();
+        }
+      } catch (err) {
+        console.error('showSection', err);
+        alert('Error al cambiar de sección: ' + (err.message || err));
       }
     }
 
@@ -673,9 +703,11 @@
       event.target.value = '';
     }
 
-    async function logoutAndRedirect() {
-      try { await logout(); } catch (_) {}
-      window.location.href = 'index.html';
+    function logoutAndRedirect() {
+      try { localStorage.removeItem('dulce_current_user'); } catch (_) {}
+      try { localStorage.clear(); } catch (_) {}
+      // No esperar al servidor: salir de inmediato
+      window.location.replace('index.html?logout=1');
     }
 
     // ==================== DASHBOARD ====================
@@ -729,13 +761,11 @@
       }
 
 
-      document.getElementById('ventasHoyModal').classList.remove('hidden');
-      document.getElementById('ventasHoyModal').classList.add('flex');
+      document.getElementById('ventasHoyModal').classList.add('is-open');
     }
 
     function closeVentasHoy() {
-      document.getElementById('ventasHoyModal').classList.add('hidden');
-      document.getElementById('ventasHoyModal').classList.remove('flex');
+      document.getElementById('ventasHoyModal').classList.remove('is-open');
     }
 
     function loadDashboard() {
@@ -804,7 +834,7 @@
       for (let i = 6; i >= 0; i--) {
         const d = new Date();
         d.setDate(d.getDate() - i);
-        const key = d.toISOString().split('T')[0];
+        const key = toLocalDateKey(d);
         days.push(d.toLocaleDateString('es-EC', { weekday: 'short', day: 'numeric' }));
         const daySales = getSalesByDateRange(key, key).reduce((s, x) => s + x.total, 0);
         const dayExp = getExpensesByDateRange(key, key).reduce((s, x) => s + (x.total || 0), 0);
@@ -812,23 +842,30 @@
         egresosData.push(dayExp);
       }
 
-      if (chartInstance) chartInstance.destroy();
-      const ctx = document.getElementById('chartIngresosEgresos').getContext('2d');
-      chartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: days,
-          datasets: [
-            { label: 'Ingresos', data: ingresosData, backgroundColor: 'rgba(34, 197, 94, 0.7)', borderRadius: 6 },
-            { label: 'Egresos', data: egresosData, backgroundColor: 'rgba(239, 68, 68, 0.7)', borderRadius: 6 }
-          ]
-        },
-        options: {
-          responsive: true,
-          plugins: { legend: { position: 'top' } },
-          scales: { y: { beginAtZero: true } }
+      try {
+        if (chartInstance) chartInstance.destroy();
+        const canvas = document.getElementById('chartIngresosEgresos');
+        if (canvas && typeof Chart !== 'undefined') {
+          const ctx = canvas.getContext('2d');
+          chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels: days,
+              datasets: [
+                { label: 'Ingresos', data: ingresosData, backgroundColor: 'rgba(34, 197, 94, 0.7)', borderRadius: 6 },
+                { label: 'Egresos', data: egresosData, backgroundColor: 'rgba(239, 68, 68, 0.7)', borderRadius: 6 }
+              ]
+            },
+            options: {
+              responsive: true,
+              plugins: { legend: { position: 'top' } },
+              scales: { y: { beginAtZero: true } }
+            }
+          });
         }
-      });
+      } catch (chartErr) {
+        console.error('Chart error', chartErr);
+      }
     }
 
     // ==================== INVENTARIO ====================
@@ -880,13 +917,11 @@
       const sel = document.getElementById('prodCategory');
       sel.innerHTML = getCategories().map(c => `<option value="${c.id}" ${product && product.category === c.id ? 'selected' : ''}>${c.name}</option>`).join('');
 
-      document.getElementById('productModal').classList.remove('hidden');
-      document.getElementById('productModal').classList.add('flex');
+      document.getElementById('productModal').classList.add('is-open');
     }
 
     function closeProductModal() {
-      document.getElementById('productModal').classList.add('hidden');
-      document.getElementById('productModal').classList.remove('flex');
+      document.getElementById('productModal').classList.remove('is-open');
     }
 
     function editProduct(id) {
@@ -930,16 +965,17 @@
     let currentReport = { from: '', to: '', sales: [], expenses: [] };
 
     function setReportRange(type) {
-      const today = new Date();
-      let from, to = today.toISOString().split('T')[0];
+      const to = getToday(); // fecha Ecuador
+      let from = to;
       if (type === 'week') {
-        const d = new Date(today);
+        const parts = to.split('-').map(Number);
+        const d = new Date(parts[0], parts[1] - 1, parts[2]);
         d.setDate(d.getDate() - 6);
-        from = d.toISOString().split('T')[0];
+        from = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
         document.getElementById('btnWeek').className = 'px-4 py-2 rounded-full text-sm font-semibold bg-pink-100 text-dulce-fucsia';
         document.getElementById('btnMonth').className = 'px-4 py-2 rounded-full text-sm font-semibold bg-gray-100 text-gray-600';
       } else {
-        from = today.toISOString().slice(0, 8) + '01';
+        from = to.slice(0, 8) + '01';
         document.getElementById('btnMonth').className = 'px-4 py-2 rounded-full text-sm font-semibold bg-pink-100 text-dulce-fucsia';
         document.getElementById('btnWeek').className = 'px-4 py-2 rounded-full text-sm font-semibold bg-gray-100 text-gray-600';
       }
@@ -1258,30 +1294,14 @@
       r8.getCell(2).font = { bold: true, color: { argb: BLUE }, size: 12 };
       r8.getCell(2).numFmt = '"$"#,##0.00';
 
-      ws1.getRow(12).values = ['Resumen rápido'];
-      ws1.getCell('A12').font = { bold: true, size: 12, color: { argb: DARK } };
-      ws1.getRow(13).values = ['Ingresos', ingresos];
-      ws1.getCell('B13').numFmt = '"$"#,##0.00';
-      ws1.getCell('B13').font = { bold: true, color: { argb: GREEN } };
-      ws1.getRow(14).values = ['  Efectivo', efectivoR];
-      ws1.getCell('B14').numFmt = '"$"#,##0.00';
-      ws1.getRow(15).values = ['  Transferencia', transferR];
-      ws1.getCell('B15').numFmt = '"$"#,##0.00';
-      ws1.getRow(16).values = ['Egresos', egresos];
-      ws1.getCell('B16').numFmt = '"$"#,##0.00';
-      ws1.getCell('B16').font = { bold: true, color: { argb: RED } };
-      ws1.getRow(17).values = ['Utilidad', utilidad];
-      ws1.getCell('B17').numFmt = '"$"#,##0.00';
-      ws1.getCell('B17').font = { bold: true, color: { argb: BLUE } };
+      ws1.getRow(12).values = ['Gráfico: Ingresos vs Egresos vs Utilidad'];
+      ws1.getCell('A12').font = { bold: true, size: 11, color: { argb: DARK } };
+      await addChartImage(ws1, imgResumen, 0, 12.5, 460, 250);
 
-      ws1.getRow(19).values = ['Gráfico: Ingresos vs Egresos vs Utilidad'];
-      ws1.getCell('A19').font = { bold: true, size: 11, color: { argb: DARK } };
-      await addChartImage(ws1, imgResumen, 0, 19.5, 460, 250);
-
-      ws1.getRow(36).values = ['Nota: Los valores están en dólares estadounidenses (USD).'];
-      ws1.getCell('A36').font = { size: 9, italic: true, color: { argb: GRAY } };
-      ws1.getRow(37).values = ['Generado el: ' + new Date().toLocaleString('es-EC')];
-      ws1.getCell('A37').font = { size: 9, color: { argb: GRAY } };
+      ws1.getRow(28).values = ['Nota: Los valores están en dólares estadounidenses (USD).'];
+      ws1.getCell('A28').font = { size: 9, italic: true, color: { argb: GRAY } };
+      ws1.getRow(29).values = ['Generado el: ' + new Date().toLocaleString('es-EC')];
+      ws1.getCell('A29').font = { size: 9, color: { argb: GRAY } };
 
       // ========== HOJA 2: PEDIDOS ==========
       const ws2 = wb.addWorksheet('Pedidos (Ingresos)', { views: [{ showGridLines: false }] });
@@ -1719,8 +1739,7 @@
       showSection('dashboard');
     });
 
-    // Init
-    loadDashboard();
+    // Init: loadDashboard se llama tras initDB (arriba), no aquí
   </script>
 </body>
 </html>
